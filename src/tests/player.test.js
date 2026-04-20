@@ -2,10 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('three', () => ({
     Vector3: class {
-        set() { return this; }
-        copy() { return this; }
-        distanceTo() { return 0; }
-        setFromMatrixPosition() { return this; }
+        constructor(x=0,y=0,z=0) { this.x=x; this.y=y; this.z=z; }
+        set(x,y,z) { this.x=x; this.y=y; this.z=z; return this; }
+        copy(v) { this.x=v.x; this.y=v.y; this.z=v.z; return this; }
+        distanceTo(v) { return Math.hypot(this.x-v.x, this.y-v.y, this.z-v.z); }
+        setFromMatrixPosition(m) { this.x=m.x||0; this.y=m.y||0; this.z=m.z||0; return this; }
     }
 }));
 
@@ -112,5 +113,104 @@ describe('Player — bola azul', () => {
         expect(p.maxCombo).toBe(3);
         p.hit(); // resetea combo
         expect(p.maxCombo).toBe(3); // maxCombo no baja
+    });
+});
+
+// Helpers para updateMovimiento
+const cam = (x, y, z) => ({ matrixWorld: { x, y, z } });
+const vec = (x, y, z) => ({ x, y, z, distanceTo(v) { return Math.hypot(x-v.x, y-v.y, z-v.z); } });
+
+describe('Player — métricas de movimiento: cabeza', () => {
+    it('acumula metros recorridos', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0, 1.6, 0), vec(0,1,0), vec(0,1,0), 0.016);
+        p.updateMovimiento(cam(1, 1.6, 0), vec(0,1,0), vec(0,1,0), 0.016); // mueve 1m
+        expect(p.metros).toBeCloseTo(1, 1);
+    });
+
+    it('registra velocidad máxima de cabeza', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0, 1.6, 0), null, null, 0.016);
+        p.updateMovimiento(cam(2, 1.6, 0), null, null, 0.016); // 2m en 0.016s = 125 m/s
+        expect(p.velocidadMaxCabeza).toBeGreaterThan(0);
+    });
+
+    it('acumula desplazamiento lateral (X)', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0,   1.6, 0), null, null, 0.016);
+        p.updateMovimiento(cam(0.5, 1.6, 0), null, null, 0.016);
+        p.updateMovimiento(cam(0,   1.6, 0), null, null, 0.016);
+        expect(p.desplazamientoLateral).toBeCloseTo(1.0, 1);
+    });
+
+    it('detecta rango vertical correcto', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0, 1.8, 0), null, null, 0.016);
+        p.updateMovimiento(cam(0, 1.2, 0), null, null, 0.016);
+        expect(p.rangoVertical).toBeCloseTo(0.6, 1);
+    });
+
+    it('detecta agachada cuando la cabeza baja >0.3m', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0, 1.8, 0), null, null, 0.016); // de pie
+        p.updateMovimiento(cam(0, 1.4, 0), null, null, 0.016); // agachado
+        p.updateMovimiento(cam(0, 1.8, 0), null, null, 0.016); // recuperado
+        expect(p.agachadas).toBe(1);
+    });
+
+    it('no cuenta agachada si el descenso es menor de 0.3m', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0, 1.8, 0), null, null, 0.016);
+        p.updateMovimiento(cam(0, 1.6, 0), null, null, 0.016);
+        p.updateMovimiento(cam(0, 1.8, 0), null, null, 0.016);
+        expect(p.agachadas).toBe(0);
+    });
+});
+
+describe('Player — métricas de movimiento: brazos', () => {
+    it('acumula distancia del brazo derecho (c1)', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0,1.6,0), vec(0,1,0), vec(0,1,0), 0.016);
+        p.updateMovimiento(cam(0,1.6,0), vec(1,1,0), vec(0,1,0), 0.016); // brazo dch mueve 1m
+        expect(p.metrosBrazoDch).toBeCloseTo(1, 1);
+    });
+
+    it('acumula distancia del brazo izquierdo (c2)', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0,1.6,0), vec(0,1,0), vec(0,1,0), 0.016);
+        p.updateMovimiento(cam(0,1.6,0), vec(0,1,0), vec(0,1,1), 0.016); // brazo izq mueve 1m
+        expect(p.metrosBrazoIzq).toBeCloseTo(1, 1);
+    });
+
+    it('registra velocidad máxima de brazos', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0,1.6,0), vec(0,1,0), vec(0,1,0), 0.016);
+        p.updateMovimiento(cam(0,1.6,0), vec(2,1,0), vec(0,1,2), 0.016);
+        expect(p.velocidadMaxBrazoDch).toBeGreaterThan(0);
+        expect(p.velocidadMaxBrazoIzq).toBeGreaterThan(0);
+    });
+});
+
+describe('Player — métricas de movimiento: tiempo activo', () => {
+    it('cuenta tiempo activo cuando hay movimiento', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0,1.6,0), vec(0,1,0), vec(0,1,0), 0.016);
+        p.updateMovimiento(cam(1,1.6,0), vec(1,1,0), vec(1,1,0), 0.016);
+        expect(p.tiempoActivo).toBeGreaterThan(0);
+    });
+
+    it('no cuenta tiempo activo cuando no hay movimiento', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0,1.6,0), vec(0,1,0), vec(0,1,0), 0.016);
+        p.updateMovimiento(cam(0,1.6,0), vec(0,1,0), vec(0,1,0), 0.016);
+        expect(p.tiempoActivo).toBe(0);
+    });
+
+    it('pctTiempoActivo está entre 0 y 100', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0,1.6,0), vec(0,1,0), vec(0,1,0), 0.016);
+        p.updateMovimiento(cam(1,1.6,0), vec(1,1,0), vec(1,1,0), 0.016);
+        expect(p.pctTiempoActivo).toBeGreaterThanOrEqual(0);
+        expect(p.pctTiempoActivo).toBeLessThanOrEqual(100);
     });
 });

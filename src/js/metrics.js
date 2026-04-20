@@ -62,6 +62,9 @@ export class Metrics {
         const pctB = this.blues.total  ? this.blues.hit  / this.blues.total  : 0;
         const pctG = this.greens.total ? this.greens.hit / this.greens.total : 0;
 
+        const r1 = (n) => Math.round(n * 10) / 10;
+        const r0 = (n) => Math.round(n);
+
         const content = document.getElementById('metrics-content');
         content.innerHTML = `
           <table class="metrics-table">
@@ -70,7 +73,20 @@ export class Metrics {
             <tr><td>Nivel máximo</td><td>${nivel}</td></tr>
             <tr><td>Puntuación</td><td>${player.puntos}</td></tr>
             <tr><td>Combo máximo</td><td>x${player.maxCombo}</td></tr>
-            <tr><td>Metros recorridos</td><td>${Math.round(player.metros * 10) / 10} m</td></tr>
+          </table>
+
+          <table class="metrics-table">
+            <tr><th colspan="2">Movimiento</th></tr>
+            <tr><td>Distancia cabeza</td><td>${r1(player.metros)} m</td></tr>
+            <tr><td>Distancia brazo derecho</td><td>${r1(player.metrosBrazoDch)} m</td></tr>
+            <tr><td>Distancia brazo izquierdo</td><td>${r1(player.metrosBrazoIzq)} m</td></tr>
+            <tr><td>Velocidad máx. cabeza</td><td>${r1(player.velocidadMaxCabeza)} m/s</td></tr>
+            <tr><td>Velocidad máx. brazo derecho</td><td>${r1(player.velocidadMaxBrazoDch)} m/s</td></tr>
+            <tr><td>Velocidad máx. brazo izquierdo</td><td>${r1(player.velocidadMaxBrazoIzq)} m/s</td></tr>
+            <tr><td>Rango vertical (agacharse)</td><td>${player.rangoVertical} m</td></tr>
+            <tr><td>Agachadas detectadas</td><td>${player.agachadas}</td></tr>
+            <tr><td>Desplazamiento lateral</td><td>${r1(player.desplazamientoLateral)} m</td></tr>
+            <tr><td>Tiempo en movimiento</td><td>${player.pctTiempoActivo}%</td></tr>
           </table>
 
           <table class="metrics-table">

@@ -235,7 +235,7 @@ function renderLoop() {
     collision.update(c1, c2, camera, held1, held2);
 
     powers.update(delta);
-    player.updateMetros(camera);
+    player.updateMovimiento(camera, gData.pos1, gData.pos2, delta);
 
     hud.refresh(player, difficulty.nivel);
 
