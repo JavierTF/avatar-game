@@ -51,7 +51,14 @@ function makeMockPlayer(mana = 100) {
 }
 
 function makeMockScene() {
-    return { add() {}, remove() {} };
+    const added = [];
+    const removed = [];
+    return {
+        added,
+        removed,
+        add(obj)    { added.push(obj); },
+        remove(obj) { removed.push(obj); added.splice(added.indexOf(obj), 1); },
+    };
 }
 
 function makeMockBalls(type = 'red', count = 3) {
@@ -99,5 +106,78 @@ describe('Powers — costes de mana (tabla del documento)', () => {
         const result     = powers.activateViento({ distanceTo: () => 0 });
         expect(result).toBe(false);
         expect(player.mana).toBe(10);
+    });
+});
+
+const mockVec = { x:0,y:0,z:0, clone(){ return this; }, normalize(){ return this; }, multiplyScalar(){ return this; }, subVectors(){ return this; }, distanceTo(){ return 0; } };
+
+describe('Powers — efectos visuales: se añaden a la escena', () => {
+    it('activateEscudo añade 2 halos (uno por mando)', () => {
+        const scene  = makeMockScene();
+        const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
+        powers.activateEscudo(mockVec, mockVec);
+        expect(scene.added.length).toBe(2);
+    });
+
+    it('activateSismico añade un anillo de onda', () => {
+        const scene  = makeMockScene();
+        const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
+        powers.activateSismico(mockVec);
+        expect(scene.added.length).toBe(1);
+    });
+
+    it('activateLlama añade un rayo (beam)', () => {
+        const scene  = makeMockScene();
+        const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
+        powers.activateLlama(mockVec, mockVec);
+        expect(scene.added.length).toBe(1);
+    });
+
+    it('activateViento añade una onda esférica', () => {
+        const scene  = makeMockScene();
+        const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
+        powers.activateViento(mockVec);
+        expect(scene.added.length).toBe(1);
+    });
+
+    it('no añade nada si no hay mana', () => {
+        const scene  = makeMockScene();
+        const powers = new Powers(scene, makeMockPlayer(0), makeMockBalls(), new Difficulty(1));
+        powers.activateEscudo(mockVec, mockVec);
+        powers.activateSismico(mockVec);
+        powers.activateLlama(mockVec, mockVec);
+        powers.activateViento(mockVec);
+        expect(scene.added.length).toBe(0);
+    });
+});
+
+describe('Powers — efectos visuales: ciclo de vida', () => {
+    it('los efectos se eliminan de la escena al expirar', () => {
+        const scene  = makeMockScene();
+        const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
+        powers.activateEscudo(mockVec, mockVec);
+        expect(scene.added.length).toBe(2);
+        // Avanzar suficiente tiempo para que expiren (life empieza en 1.0, baja a 1.5*delta)
+        powers.update(2.0);
+        expect(scene.added.length).toBe(0);
+    });
+
+    it('los efectos fade reducen opacidad con el tiempo', () => {
+        const scene  = makeMockScene();
+        const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
+        powers.activateEscudo(mockVec, mockVec);
+        const opacidadInicial = powers._effects[0].mesh.material.opacity;
+        powers.update(0.3);
+        const opacidadDespues = powers._effects[0].mesh.material.opacity;
+        expect(opacidadDespues).toBeLessThan(opacidadInicial);
+    });
+
+    it('los efectos expand crecen de escala con el tiempo', () => {
+        const scene  = makeMockScene();
+        const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
+        powers.activateSismico(mockVec);
+        const escalaInicial = powers._effects[0].scale;
+        powers.update(0.1);
+        expect(powers._effects[0].scale).toBeGreaterThan(escalaInicial);
     });
 });
