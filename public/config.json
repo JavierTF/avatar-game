@@ -1,0 +1,24 @@
+{
+  "gestures": {
+    "green_activate": { "direction": [0, 1, -1], "minSpeed": 0.03, "label": "Atrás y arriba" },
+    "power_escudo":   { "direction": [0, -1, 0], "minSpeed": 0.04, "label": "Cruz + agacharse", "twoHands": true },
+    "power_sismico":  { "direction": [0, -1, 0], "minSpeed": 0.06, "label": "Golpear suelo", "twoHands": true },
+    "power_llama":    { "direction": [0, 0, -1], "minSpeed": 0.05, "label": "Empuje adelante", "twoHands": true },
+    "power_viento":   { "direction": [1, 0, 0],  "minSpeed": 0.07, "label": "Separar manos", "twoHands": true },
+    "orange_interact":{ "direction": [0, 1, 0],  "minSpeed": 0.03, "label": "Levantar" }
+  },
+  "balls": {
+    "red":    { "speed": 0.015, "coneAngle": 90, "coneWidth": 60, "pattern": "straight" },
+    "blue":   { "speed": 0.012, "coneAngle": 90, "coneWidth": 60, "pattern": "straight" },
+    "green":  { "speed": 0.010, "coneAngle": 90, "coneWidth": 60, "pattern": "straight" },
+    "orange": { "speed": 0.008, "coneAngle": 90, "coneWidth": 60, "pattern": "homing", "effect": "heal" }
+  },
+  "player": {
+    "vidaInicial": 5,
+    "maxVida": 5,
+    "maxMana": 100,
+    "manaGananciaAzul": 8,
+    "puntosAzul": 10
+  },
+  "profiles": []
+}

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dodge & Strike VR</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; overflow: hidden; font-family: Arial, sans-serif; }
+    canvas { position: absolute; top: 0; left: 0; z-index: 1; }
+    #role-select {
+      position: fixed; inset: 0; background: #1a1a2e;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; color: white; z-index: 30;
+    }
+    #role-select h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: #88aaff; }
+    #role-select p  { color: #aaa; margin-bottom: 2.5rem; font-style: italic; }
+    .role-cards { display: flex; gap: 2rem; }
+    .role-card {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 2rem 2.5rem; background: #2e3a6e; border: 2px solid transparent;
+      border-radius: 12px; cursor: pointer; transition: background 0.2s, border-color 0.2s;
+      min-width: 160px;
+    }
+    .role-card:hover { background: #3e4a8e; border-color: #88aaff; }
+    .role-card .icon { font-size: 3rem; margin-bottom: 0.8rem; }
+    .role-card .label { font-size: 1.2rem; font-weight: bold; }
+    .role-card .desc { font-size: 0.85rem; color: #aaa; margin-top: 0.4rem; text-align: center; }
+    #overlay {
+      position: fixed; inset: 0; background: #1a1a2e;
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center; color: white; z-index: 10;
+    }
+    #overlay h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: #88aaff; }
+    #overlay p  { color: #aaa; margin-bottom: 2rem; font-style: italic; }
+    #overlay button {
+      padding: 0.8rem 2rem; font-size: 1.1rem;
+      background: #2e3a6e; color: white; border: none;
+      border-radius: 8px; cursor: pointer; margin: 0.4rem;
+    }
+    #overlay button:hover { background: #3e4a8e; }
+    #hud {
+      position: fixed; top: 1rem; left: 1rem;
+      display: none; flex-direction: column; gap: 0.5rem;
+      z-index: 100; pointer-events: none;
+    }
+    .hud-item {
+      background: rgba(0,0,0,0.65); border-radius: 8px;
+      padding: 0.35rem 0.8rem; color: white; font-size: 1.1rem;
+      font-family: Arial, sans-serif; white-space: nowrap;
+    }
+    #hud-nivel {
+      position: fixed; top: 1rem; right: 1rem;
+      background: rgba(0,0,0,0.65); border-radius: 8px;
+      padding: 0.35rem 0.8rem; color: #aaffaa; font-size: 1.1rem;
+      font-family: Arial, sans-serif; display: none; z-index: 100; pointer-events: none;
+    }
+    #hud-combo {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: #ff8833; font-size: 2rem; font-weight: bold;
+      font-family: Arial, sans-serif; display: none; z-index: 100;
+      pointer-events: none; text-shadow: 0 0 12px #ff8833;
+    }
+    #metrics-screen {
+      position: fixed; inset: 0; background: #1a1a2e;
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: white; z-index: 20; overflow-y: auto; padding: 2rem;
+    }
+    #metrics-screen h2 { font-size: 2rem; color: #88aaff; margin-bottom: 1.5rem; }
+    .metrics-table { width: 100%; max-width: 700px; border-collapse: collapse; margin-bottom: 1.5rem; }
+    .metrics-table th { background: #2e3a6e; padding: 0.5rem 1rem; text-align: left; }
+    .metrics-table td { padding: 0.5rem 1rem; border-bottom: 1px solid #333; }
+    .metrics-table tr:nth-child(even) td { background: #222; }
+    #metrics-screen button {
+      margin-top: 1rem; padding: 0.8rem 2rem; font-size: 1rem;
+      background: #2e3a6e; color: white; border: none;
+      border-radius: 8px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="role-select">
+    <h1>Dodge & Strike VR</h1>
+    <p>Un homenaje a Avatar: La Leyenda de Aang</p>
+    <div class="role-cards">
+      <div class="role-card" id="btn-role-player">
+        <div class="icon">🥋</div>
+        <div class="label">Jugador</div>
+        <div class="desc">Entrar al juego en VR o escritorio</div>
+      </div>
+      <div class="role-card" id="btn-role-instructor">
+        <div class="icon">🎓</div>
+        <div class="label">Instructor</div>
+        <div class="desc">Configurar sesión y monitorear</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <h1>Dodge & Strike VR</h1>
+    <p>Un homenaje a Avatar: La Leyenda de Aang</p>
+    <p style="color:#aaa; margin-bottom:0.5rem;">Nivel de inicio</p>
+    <div style="display:flex; gap:0.8rem; margin-bottom:1.5rem;">
+      <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+        <input type="radio" name="nivel-inicio" value="1" checked /> Nivel 1
+      </label>
+      <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+        <input type="radio" name="nivel-inicio" value="2" /> Nivel 2
+      </label>
+      <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+        <input type="radio" name="nivel-inicio" value="3" /> Nivel 3+
+      </label>
+    </div>
+    <button id="btn-vr">Entrar en VR</button>
+    <button id="btn-desktop">Modo escritorio (sin VR)</button>
+  </div>
+
+  <div id="hud">
+    <div class="hud-item" id="hud-vida">♥♥♥♥♥</div>
+    <div class="hud-item" id="hud-mana" style="color:#88aaff">Mana: 0%</div>
+    <div class="hud-item" id="hud-pts"  style="color:#ffee44">Pts: 0</div>
+  </div>
+  <div id="hud-nivel">Nivel 1</div>
+  <div id="hud-combo"></div>
+
+  <div id="metrics-screen">
+    <h2>Resumen de partida</h2>
+    <div id="metrics-content"></div>
+    <button id="btn-restart">Jugar de nuevo</button>
+  </div>
+
+  <script type="module" src="/src/js/main.js"></script>
+</body>
+</html>
