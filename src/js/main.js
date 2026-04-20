@@ -158,14 +158,15 @@ function startGame() {
     collision.onRedHit = () => {
         player.hit();
         metrics.ballHit('red');
-        feedback.spawn('red', _camPos);
+        feedback.spawn('red', _camPos, `♥ ${player.vida}`);
         if (!player.vivo) endGame();
     };
 
     collision.onBlueHit = () => {
         player.hitBlue();
         metrics.ballHit('blue');
-        feedback.spawn('blue', _camPos);
+        const label = player.combo > 1 ? `x${player.combo}` : `+${player._puntosAzul}`;
+        feedback.spawn('blue', _camPos, label);
     };
 
     collision.onGreenGrabbed = (ball, ctrl) => {
@@ -230,7 +231,7 @@ function _activateGreen(ball, ctrl) {
     if (ctrlPos.y >= headY - 0.15) {
         player.heal();
         metrics.ballHit('green');
-        feedback.spawn('green', _camPos);
+        feedback.spawn('green', _camPos, '+♥');
     }
     balls.remove(ball);
 }

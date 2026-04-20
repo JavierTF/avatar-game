@@ -1,4 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeAll } from 'vitest';
+
+const _fakeCtx = { fillStyle:'', font:'', textAlign:'', textBaseline:'', fillText(){} };
+const _fakeCanvas = { width:0, height:0, getContext(){ return _fakeCtx; } };
+beforeAll(() => {
+    vi.spyOn(document, 'createElement').mockImplementation((tag) =>
+        tag === 'canvas' ? _fakeCanvas : document.createElement(tag)
+    );
+});
 
 vi.mock('three', () => ({
     TorusGeometry: class { dispose() {} },
@@ -8,12 +17,17 @@ vi.mock('three', () => ({
     },
     Mesh: class {
         constructor() {
-            this.position = { copy() {} };
+            this.position = { copy() {}, y: 0 };
             this.rotation = { x: 0 };
             this.scale    = { setScalar(v) { this._s = v; } };
             this.material = { opacity: 0.9, dispose() {} };
             this.geometry = { dispose() {} };
         }
+    },
+    CanvasTexture: class { dispose() {} },
+    SpriteMaterial: class { constructor() { this.opacity = 1; this.map = { dispose(){} }; } dispose() {} },
+    Sprite: class {
+        constructor() { this.position = { x:0, y:0, z:0, set(x,y,z){ this.x=x;this.y=y;this.z=z; } }; this.scale = { set(){} }; this.material = { opacity:1, map:{ dispose(){} }, dispose(){} }; }
     },
     DoubleSide: 1,
 }));
@@ -29,7 +43,7 @@ function makeScene() {
     };
 }
 
-const pos = { copy() {} };
+const pos = { x: 0, y: 1.6, z: 0, copy() {} };
 
 describe('PlayerFeedback — spawn', () => {
     it('añade un anillo a la escena al hacer spawn', () => {
@@ -39,22 +53,35 @@ describe('PlayerFeedback — spawn', () => {
         expect(scene.added.length).toBe(1);
     });
 
+    it('con texto añade halo + sprite (2 objetos)', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('red', pos, '♥ 3');
+        expect(scene.added.length).toBe(2);
+    });
+
+    it('sin texto solo añade el halo (1 objeto)', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('blue', pos);
+        expect(scene.added.length).toBe(1);
+    });
+
     it('cada spawn añade un efecto independiente', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
-        fb.spawn('red',   pos);
-        fb.spawn('blue',  pos);
-        fb.spawn('green', pos);
-        expect(scene.added.length).toBe(3);
+        fb.spawn('red',   pos, '♥ 3');
+        fb.spawn('blue',  pos, 'x2');
+        fb.spawn('green', pos, '+♥');
         expect(fb._effects.length).toBe(3);
     });
 
     it('acepta tipos red, blue y green sin errores', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
-        expect(() => fb.spawn('red',   pos)).not.toThrow();
-        expect(() => fb.spawn('blue',  pos)).not.toThrow();
-        expect(() => fb.spawn('green', pos)).not.toThrow();
+        expect(() => fb.spawn('red',   pos, '♥ 3')).not.toThrow();
+        expect(() => fb.spawn('blue',  pos, 'x4' )).not.toThrow();
+        expect(() => fb.spawn('green', pos, '+♥' )).not.toThrow();
     });
 });
 
@@ -81,9 +108,26 @@ describe('PlayerFeedback — update / ciclo de vida', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
         fb.spawn('green', pos);
-        expect(scene.added.length).toBe(1);
-        fb.update(2.0); // suficiente para que expire (life=1, baja a 2.5*delta)
+        fb.update(2.0);
         expect(scene.added.length).toBe(0);
         expect(fb._effects.length).toBe(0);
+    });
+
+    it('el sprite de texto también se elimina al expirar', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('red', pos, '♥ 2');
+        expect(scene.added.length).toBe(2);
+        fb.update(2.0);
+        expect(scene.added.length).toBe(0);
+    });
+
+    it('el sprite flota hacia arriba con el tiempo', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('blue', pos, 'x3');
+        const yInicial = fb._effects[0].sprite.position.y;
+        fb.update(0.2);
+        expect(fb._effects[0].sprite.position.y).toBeGreaterThan(yInicial);
     });
 });
