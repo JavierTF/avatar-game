@@ -164,6 +164,20 @@ export class BallManager {
         for (let i = this.balls.length - 1; i >= 0; i--) this._remove(i);
     }
 
+    // Level-1 grab hint: bright emissive glow when controller is in grab range
+    updateGreenHints(nivel, p1, p2) {
+        const GRAB_R = 0.23; // BALL_R + CTRL_R from collision.js
+        for (const b of this.balls) {
+            if (b.type !== 'green' || b.grabbed) continue;
+            const near = nivel === 1 && (
+                p1.distanceTo(b.mesh.position) < GRAB_R ||
+                p2.distanceTo(b.mesh.position) < GRAB_R
+            );
+            b.mesh.material.emissive.setHex(near ? 0x88ffaa : 0x000000);
+            b.mesh.material.emissiveIntensity = near ? 2.0 : 0.2;
+        }
+    }
+
     getBallPositions() {
         return this.balls.map(b => ({
             type: b.type,

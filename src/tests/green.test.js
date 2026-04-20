@@ -17,12 +17,14 @@ vi.mock('three', () => {
         Vector3,
         MathUtils: { lerp:(a,b,t)=>a+(b-a)*t, degToRad:(d)=>d*Math.PI/180 },
         SphereGeometry:       class { dispose(){} },
-        MeshStandardMaterial: class { dispose(){} constructor(){ this.emissive={multiplyScalar(){}}; } },
+        MeshStandardMaterial: class { dispose(){} constructor(){ this.emissive={multiplyScalar(){},setHex(){}}; this.emissiveIntensity=0.2; } },
         Mesh: class {
-            constructor() {
+            constructor(geo, mat) {
                 this.position = new Vector3();
                 this.castShadow = false;
                 this.rotation = {};
+                this.material = mat || { emissive: { multiplyScalar(){}, setHex(){} }, emissiveIntensity: 0.2 };
+                this.geometry = geo || { dispose(){} };
             }
         },
         Color: class { multiplyScalar(){ return this; } },
@@ -126,5 +128,38 @@ describe('Bola verde — seguir al mando', () => {
         bm._moveBall(ball, 0.016, { x:0, y:1.6, z:0 });
 
         expect(ball.mesh.position.y).toBe(1.6); // sigue al ctrl, no su velocidad
+    });
+});
+
+describe('Bola verde — halo de ayuda nivel 1', () => {
+    function makeVec(x, y, z) {
+        return { x, y, z, distanceTo(v) { return Math.hypot(x-v.x, y-v.y, z-v.z); } };
+    }
+
+    it('activa el emissive cuando el mando está en rango (nivel 1)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const hexValues = [];
+        ball.mesh.material.emissive.setHex = (v) => hexValues.push(v);
+
+        bm.updateGreenHints(1, makeVec(0, 1.2, 0), makeVec(2, 0, 0));
+        expect(hexValues[0]).toBe(0x88ffaa);
+    });
+
+    it('no activa el emissive si el mando está lejos', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const hexValues = [];
+        ball.mesh.material.emissive.setHex = (v) => hexValues.push(v);
+
+        bm.updateGreenHints(1, makeVec(5, 0, 0), makeVec(5, 0, 0));
+        expect(hexValues[0]).toBe(0x000000);
+    });
+
+    it('no activa el emissive en nivel > 1 aunque esté cerca', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const hexValues = [];
+        ball.mesh.material.emissive.setHex = (v) => hexValues.push(v);
+
+        bm.updateGreenHints(2, makeVec(0, 1.2, 0), makeVec(0, 1.2, 0));
+        expect(hexValues[0]).toBe(0x000000);
     });
 });

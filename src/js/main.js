@@ -257,6 +257,7 @@ function renderLoop() {
     handlePowers(gData);
 
     collision.update(c1, c2, camera, held1, held2);
+    balls.updateGreenHints(difficulty.nivel, gData.pos1, gData.pos2);
     if (grabbedBall1) grabbedBall1.ctrlPos = gData.pos1;
     if (grabbedBall2) grabbedBall2.ctrlPos = gData.pos2;
 
