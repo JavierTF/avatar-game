@@ -10,10 +10,11 @@ import { Powers }      from './powers.js';
 import { CollisionSystem } from './collision.js';
 import { HUD }         from './hud.js';
 import { Metrics }     from './metrics.js';
+import { PlayerFeedback } from './feedback.js';
 
 let renderer, scene, camera;
 let c1, c2, cg1, cg2;
-let player, difficulty, balls, gestures, powers, collision, hud, metrics;
+let player, difficulty, balls, gestures, powers, collision, hud, metrics, feedback;
 let config;
 let clock;
 let running = false;
@@ -140,6 +141,7 @@ function startGame() {
     hud        = new HUD();
     hud.show();
     metrics    = new Metrics();
+    feedback   = new PlayerFeedback(scene);
 
     difficulty.onChange = (nivel) => {
         metrics.maxNivel = nivel;
@@ -149,17 +151,20 @@ function startGame() {
     collision.onRedHit = () => {
         player.hit();
         metrics.ballHit('red');
+        feedback.spawn('red', _camPos);
         if (!player.vivo) endGame();
     };
 
     collision.onBlueHit = () => {
         player.hitBlue();
         metrics.ballHit('blue');
+        feedback.spawn('blue', _camPos);
     };
 
     collision.onGreenGrab = () => {
         player.heal();
         metrics.ballHit('green');
+        feedback.spawn('green', _camPos);
     };
 
     collision.onOrangeHit = (effect) => {
@@ -235,6 +240,7 @@ function renderLoop() {
     collision.update(c1, c2, camera, held1, held2);
 
     powers.update(delta);
+    feedback.update(delta);
     player.updateMovimiento(camera, gData.pos1, gData.pos2, delta);
 
     hud.refresh(player, difficulty.nivel);
