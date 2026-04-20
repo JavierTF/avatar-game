@@ -35,7 +35,7 @@ export class PlayerFeedback {
         // Halo expansivo
         const geo  = new THREE.TorusGeometry(0.5, 0.04, 8, 48);
         const mat  = new THREE.MeshBasicMaterial({
-            color, transparent: true, opacity: 0.9, side: THREE.DoubleSide
+            color, transparent: true, opacity: 0.45, side: THREE.DoubleSide
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.copy(playerPos);
@@ -60,7 +60,7 @@ export class PlayerFeedback {
             e.scale += delta * 6;
 
             e.mesh.scale.setScalar(e.scale);
-            e.mesh.material.opacity = Math.max(0, e.life * 0.9);
+            e.mesh.material.opacity = Math.max(0, e.life * 0.45);
 
             if (e.sprite) {
                 e.sprite.position.y += delta * 0.8; // flota hacia arriba
