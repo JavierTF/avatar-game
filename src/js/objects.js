@@ -77,7 +77,7 @@ export class BallManager {
 
         const vel = this._velocity(type, cfg, spawnPos, playerPos);
 
-        const ball = { mesh, type, velocity: vel, cfg, alive: true };
+        const ball = { mesh, type, velocity: vel, cfg, alive: true, grabbed: false, ctrlPos: null };
         this.scene.add(mesh);
         this.balls.push(ball);
         return ball;
@@ -124,6 +124,10 @@ export class BallManager {
     }
 
     _moveBall(ball, delta, playerPos) {
+        if (ball.grabbed && ball.ctrlPos) {
+            ball.mesh.position.copy(ball.ctrlPos);
+            return;
+        }
         if (ball.type === 'orange' && ball.cfg.pattern === 'homing') {
             _target.set(playerPos.x, playerPos.y, playerPos.z);
             _dir.subVectors(_target, ball.mesh.position).normalize()

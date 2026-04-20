@@ -11,10 +11,10 @@ export class CollisionSystem {
     constructor(player, ballManager) {
         this.player      = player;
         this.ballManager = ballManager;
-        this.onBlueHit   = null;
-        this.onRedHit    = null;
-        this.onGreenGrab = null;
-        this.onOrangeHit = null;
+        this.onBlueHit      = null;
+        this.onRedHit       = null;
+        this.onGreenGrabbed = null;
+        this.onOrangeHit    = null;
     }
 
     update(c1, c2, camera, held1, held2) {
@@ -44,9 +44,13 @@ export class CollisionSystem {
                     if (this.onBlueHit) this.onBlueHit();
                 }
             } else if (ball.type === 'green') {
-                if ((hit1 && !held1) || (hit2 && !held2)) {
-                    this.ballManager.remove(ball);
-                    if (this.onGreenGrab) this.onGreenGrab(hit1 ? 1 : 2);
+                if (ball.grabbed) continue;
+                if (hit1 && held1) {
+                    ball.grabbed = true;
+                    if (this.onGreenGrabbed) this.onGreenGrabbed(ball, 1);
+                } else if (hit2 && held2) {
+                    ball.grabbed = true;
+                    if (this.onGreenGrabbed) this.onGreenGrabbed(ball, 2);
                 }
             } else if (ball.type === 'orange') {
                 if (hit1 || hit2) {

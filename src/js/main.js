@@ -19,6 +19,7 @@ let config;
 let clock;
 let running = false;
 let held1 = false, held2 = false;
+let grabbedBall1 = null, grabbedBall2 = null;
 let isDesktop = false;
 let _mouseDown = false;
 let _yaw = 0, _pitch = 0;
@@ -73,9 +74,15 @@ async function init() {
     c2.add(ray.clone());
 
     c1.addEventListener('selectstart', () => { held1 = true; });
-    c1.addEventListener('selectend',   () => { held1 = false; });
+    c1.addEventListener('selectend',   () => {
+        held1 = false;
+        if (grabbedBall1) { _activateGreen(grabbedBall1, c1); grabbedBall1 = null; }
+    });
     c2.addEventListener('selectstart', () => { held2 = true; });
-    c2.addEventListener('selectend',   () => { held2 = false; });
+    c2.addEventListener('selectend',   () => {
+        held2 = false;
+        if (grabbedBall2) { _activateGreen(grabbedBall2, c2); grabbedBall2 = null; }
+    });
 
     clock = new THREE.Clock();
 
@@ -161,10 +168,9 @@ function startGame() {
         feedback.spawn('blue', _camPos);
     };
 
-    collision.onGreenGrab = () => {
-        player.heal();
-        metrics.ballHit('green');
-        feedback.spawn('green', _camPos);
+    collision.onGreenGrabbed = (ball, ctrl) => {
+        if (ctrl === 1) grabbedBall1 = ball;
+        else            grabbedBall2 = ball;
     };
 
     collision.onOrangeHit = (effect) => {
@@ -217,6 +223,18 @@ function handlePowers(gData) {
     }
 }
 
+function _activateGreen(ball, ctrl) {
+    const ctrlPos = new THREE.Vector3();
+    ctrl.getWorldPosition(ctrlPos);
+    const headY = _camPos.y;
+    if (ctrlPos.y >= headY - 0.15) {
+        player.heal();
+        metrics.ballHit('green');
+        feedback.spawn('green', _camPos);
+    }
+    balls.remove(ball);
+}
+
 function endGame() {
     running = false;
     metrics.showScreen(player, difficulty.nivel);
@@ -238,6 +256,8 @@ function renderLoop() {
     handlePowers(gData);
 
     collision.update(c1, c2, camera, held1, held2);
+    if (grabbedBall1) grabbedBall1.ctrlPos = gData.pos1;
+    if (grabbedBall2) grabbedBall2.ctrlPos = gData.pos2;
 
     powers.update(delta);
     feedback.update(delta);
