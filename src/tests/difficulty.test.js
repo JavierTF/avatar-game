@@ -8,27 +8,27 @@ describe('Difficulty', () => {
         expect(d.speedMult).toBeCloseTo(1.0);
     });
 
-    it('nivel inicial 2 tiene speedMult 1.10', () => {
+    it('nivel inicial 2 tiene speedMult 1.15', () => {
         const d = new Difficulty(2);
         expect(d.nivel).toBe(2);
-        expect(d.speedMult).toBeCloseTo(1.10);
+        expect(d.speedMult).toBeCloseTo(1.15);
     });
 
-    it('nivel inicial 3 tiene speedMult 1.21', () => {
+    it('nivel inicial 3 tiene speedMult 1.3225', () => {
         const d = new Difficulty(3);
-        expect(d.speedMult).toBeCloseTo(1.21);
+        expect(d.speedMult).toBeCloseTo(1.3225);
     });
 
-    it('sube de nivel tras 30 segundos', () => {
+    it('sube de nivel tras 15 segundos', () => {
         const d = new Difficulty();
-        d.update(30);
+        d.update(15);
         expect(d.nivel).toBe(2);
     });
 
-    it('no sube de nivel antes de 30 segundos', () => {
+    it('no sube de nivel antes de 15 segundos', () => {
         const d = new Difficulty();
-        d.update(15);
-        d.update(14);
+        d.update(7);
+        d.update(7);
         expect(d.nivel).toBe(1);
     });
 
@@ -36,7 +36,7 @@ describe('Difficulty', () => {
         const d = new Difficulty();
         let llamado = false;
         d.onChange = () => { llamado = true; };
-        d.update(30);
+        d.update(15);
         expect(llamado).toBe(true);
     });
 

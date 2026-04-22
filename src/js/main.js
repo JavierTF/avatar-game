@@ -135,6 +135,8 @@ async function init() {
 function startGame() {
     document.getElementById('overlay').style.display = 'none';
 
+    try { localStorage.removeItem('dsv_final_metrics'); } catch(_) {}
+
     if (balls) balls.removeAll();
 
     const nivelInicial = parseInt(document.querySelector('input[name="nivel-inicio"]:checked')?.value ?? '1');

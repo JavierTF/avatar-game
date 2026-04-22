@@ -1,10 +1,10 @@
 export class Difficulty {
     constructor(nivelInicial = 1) {
         this.nivel       = nivelInicial;
-        this.speedMult   = Math.pow(1 + 0.10, nivelInicial - 1);
+        this.speedMult   = Math.pow(1.15, nivelInicial - 1);
         this._elapsed    = 0;
-        this.INTERVAL    = 30;
-        this.SPEED_INC   = 0.10;
+        this.INTERVAL    = 15;
+        this.SPEED_INC   = 0.15;
         this.onChange    = null;
     }
 

@@ -53,7 +53,7 @@ export class Metrics {
         } catch(_) {}
     }
 
-    showScreen(player, nivel) {
+    buildHTML(player, nivel) {
         const elapsed = Math.round((Date.now() - this.startTime) / 1000);
         const mins    = Math.floor(elapsed / 60);
         const secs    = elapsed % 60;
@@ -65,8 +65,7 @@ export class Metrics {
         const r1 = (n) => Math.round(n * 10) / 10;
         const r0 = (n) => Math.round(n);
 
-        const content = document.getElementById('metrics-content');
-        content.innerHTML = `
+        return `
           <table class="metrics-table">
             <tr><th>Dato</th><th>Valor</th></tr>
             <tr><td>Tiempo</td><td>${mins}m ${secs}s</td></tr>
@@ -116,7 +115,16 @@ export class Metrics {
             }).join('')}
           </table>
         `;
+    }
 
+    showScreen(player, nivel) {
+        const html = this.buildHTML(player, nivel);
+        document.getElementById('metrics-content').innerHTML = html;
         document.getElementById('metrics-screen').style.display = 'flex';
+
+        // Publica el resumen para que el panel de instructor lo muestre.
+        try {
+            localStorage.setItem('dsv_final_metrics', JSON.stringify({ html, ts: Date.now() }));
+        } catch(_) {}
     }
 }

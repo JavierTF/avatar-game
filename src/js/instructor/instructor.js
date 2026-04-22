@@ -1,7 +1,8 @@
-import { GestureEditor } from './gesture-editor.js';
-import { BallEditor }    from './ball-editor.js';
-import { Profiles }      from './profiles.js';
-import { Monitor }       from './monitor.js';
+import { GestureEditor }    from './gesture-editor.js';
+import { BallEditor }       from './ball-editor.js';
+import { Profiles }         from './profiles.js';
+import { Monitor }          from './monitor.js';
+import { initFinalMetrics } from './final-metrics.js';
 
 const panels = document.querySelectorAll('.panel');
 const navBtns = document.querySelectorAll('nav button');
@@ -44,4 +45,5 @@ function saveConfig(cfg) {
     ballEditor.init();
     profiles.init();
     monitor.init();
+    initFinalMetrics();
 })();
