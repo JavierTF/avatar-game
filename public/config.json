@@ -17,6 +17,7 @@
     "vidaInicial": 5,
     "maxVida": 5,
     "maxMana": 100,
+    "manaInicial": 60,
     "manaGananciaAzul": 8,
     "puntosAzul": 10
   },

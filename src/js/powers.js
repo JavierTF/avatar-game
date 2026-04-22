@@ -7,6 +7,7 @@ export class Powers {
         this.ballManager = ballManager;
         this.difficulty  = difficulty;
         this._effects    = [];
+        this._activeShield = null;
 
         this.MANA_COSTS = {
             escudo: [[0.20, 0.30, 0.40], 'escudo'],
@@ -14,6 +15,9 @@ export class Powers {
             llama:  [[0.60, 0.70, 0.80], 'llama'],
             viento: [[0.60, 0.80, 1.00], 'viento'],
         };
+
+        this.SHIELD_DURATION = 2.5;
+        this.SHIELD_RADIUS   = 1.4;
     }
 
     _cost(power) {
@@ -26,14 +30,13 @@ export class Powers {
         if (!this.player.consumeMana(this._cost('escudo'))) return false;
         this._spawnHalo(pos1);
         this._spawnHalo(pos2);
-        setTimeout(() => {
-            const balls = this.ballManager.balls.filter(b => b.type === 'red');
-            for (const b of balls) {
-                if (pos1.distanceTo(b.mesh.position) < 1.2 || pos2.distanceTo(b.mesh.position) < 1.2) {
-                    this._dropBall(b);
-                }
-            }
-        }, 600);
+        // Escudo activo en tiempo real: durante SHIELD_DURATION segundos,
+        // cualquier bola roja que entre en el radio alrededor de los mandos cae.
+        this._activeShield = {
+            pos1: pos1.clone(),
+            pos2: pos2.clone(),
+            remaining: this.SHIELD_DURATION,
+        };
         return true;
     }
 
@@ -70,17 +73,20 @@ export class Powers {
     activateViento(playerPos) {
         if (!this.player.consumeMana(this._cost('viento'))) return false;
         const balls = [...this.ballManager.balls.filter(b => b.type === 'red')];
-        for (const b of balls) this.ballManager.remove(b);
+        for (const b of balls) this._dropBall(b);
         this._spawnWave(playerPos);
         return balls.length;
     }
 
     _dropBall(ball) {
+        if (ball._dropped) return;
+        ball._dropped = true;
         ball.velocity.set(
-            (Math.random() - 0.5) * 0.02,
-            -0.03,
-            (Math.random() - 0.5) * 0.02
+            (Math.random() - 0.5) * 0.05,
+            -0.08,
+            (Math.random() - 0.5) * 0.05
         );
+        // Se eliminará al salir de BOUNDS (cae bajo y < -1).
         setTimeout(() => this.ballManager.remove(ball), 1500);
     }
 
@@ -124,6 +130,21 @@ export class Powers {
     }
 
     update(delta) {
+        // Escudo vivo: tira cualquier bola roja que entre en su radio.
+        if (this._activeShield) {
+            const s = this._activeShield;
+            s.remaining -= delta;
+            for (const b of this.ballManager.balls) {
+                if (b.type !== 'red' || b._dropped) continue;
+                const d1 = s.pos1.distanceTo(b.mesh.position);
+                const d2 = s.pos2.distanceTo(b.mesh.position);
+                if (d1 < this.SHIELD_RADIUS || d2 < this.SHIELD_RADIUS) {
+                    this._dropBall(b);
+                }
+            }
+            if (s.remaining <= 0) this._activeShield = null;
+        }
+
         for (let i = this._effects.length - 1; i >= 0; i--) {
             const e = this._effects[i];
             e.life -= delta * 1.5;

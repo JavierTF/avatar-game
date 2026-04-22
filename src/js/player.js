@@ -10,8 +10,8 @@ export class Player {
         const cfg     = config.player || {};
         this.maxVida  = cfg.maxVida      ?? 5;
         this.vida     = cfg.vidaInicial  ?? this.maxVida;
-        this.mana     = 0;
         this.maxMana  = cfg.maxMana      ?? 100;
+        this.mana     = cfg.manaInicial  ?? 0;
         this._manaGananciaAzul = cfg.manaGananciaAzul ?? 8;
         this._puntosAzul       = cfg.puntosAzul       ?? 10;
         this.puntos   = 0;

@@ -89,11 +89,11 @@ describe('Powers — costes de mana (tabla del documento)', () => {
             const powers     = new Powers(makeMockScene(), player, makeMockBalls(), difficulty);
 
             const manaAntes = player.mana;
-            if (poder === 'escudo')  powers.activateEscudo({ distanceTo: () => 0 }, { distanceTo: () => 0 });
-            if (poder === 'sismico') powers.activateSismico({ distanceTo: () => 0 });
             const mockVec = { x:0,y:0,z:0, clone(){ return this; }, normalize(){ return this; }, multiplyScalar(){ return this; }, subVectors(){ return this; }, distanceTo(){ return 0; } };
-        if (poder === 'llama')   powers.activateLlama(mockVec, mockVec);
-            if (poder === 'viento')  powers.activateViento({ distanceTo: () => 0 });
+            if (poder === 'escudo')  powers.activateEscudo(mockVec, mockVec);
+            if (poder === 'sismico') powers.activateSismico(mockVec);
+            if (poder === 'llama')   powers.activateLlama(mockVec, mockVec);
+            if (poder === 'viento')  powers.activateViento(mockVec);
 
             expect(manaAntes - player.mana).toBeCloseTo(pct);
         });
