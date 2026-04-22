@@ -128,7 +128,7 @@ export class BallManager {
             ball.mesh.position.copy(ball.ctrlPos);
             return;
         }
-        if (ball.type === 'orange' && ball.cfg.pattern === 'homing') {
+        if (ball.type === 'orange' && ball.cfg.pattern === 'homing' && !ball._bounced) {
             _target.set(playerPos.x, playerPos.y, playerPos.z);
             _dir.subVectors(_target, ball.mesh.position).normalize()
                 .multiplyScalar(ball.cfg.speed * this.difficulty.speedMult);

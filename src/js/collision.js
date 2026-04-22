@@ -55,8 +55,15 @@ export class CollisionSystem {
                     if (this.onGreenGrabbed) this.onGreenGrabbed(ball, 2);
                 }
             } else if (ball.type === 'orange') {
-                if (hit1 || hit2) {
-                    this.ballManager.remove(ball);
+                if (!ball._bounced && (hit1 || hit2)) {
+                    const ctrlPos = hit1 ? p1 : p2;
+                    // Rebote hacia el lado contrario al impacto:
+                    // dirección = (bola - mando), así sale alejándose.
+                    const bounceDir = new THREE.Vector3()
+                        .subVectors(ball.mesh.position, ctrlPos)
+                        .normalize();
+                    ball.velocity.copy(bounceDir.multiplyScalar(0.04));
+                    ball._bounced = true;
                     if (this.onOrangeHit) this.onOrangeHit(ball.cfg.effect);
                 }
             }

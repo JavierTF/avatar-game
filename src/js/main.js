@@ -167,8 +167,7 @@ function startGame() {
     collision.onBlueHit = (hitPos) => {
         player.hitBlue();
         metrics.ballHit('blue');
-        const label = player.combo > 1 ? `x${player.combo}` : `+${player._puntosAzul}`;
-        feedback.spawn('blue', hitPos, label);
+        feedback.spawn('blue', hitPos, `♦ ${Math.round(player.mana)}`);
     };
 
     collision.onGreenGrabbed = (ball, ctrl) => {
