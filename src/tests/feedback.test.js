@@ -1,10 +1,16 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 
+const _gradStops = [];
 const _fakeCtx = {
     fillStyle: '', font: '', textAlign: '', textBaseline: '',
     fillText(){}, fillRect(){},
-    createRadialGradient(){ return { addColorStop(){} }; },
+    createRadialGradient() {
+        _gradStops.length = 0;
+        return {
+            addColorStop(offset, color) { _gradStops.push({ offset, color }); },
+        };
+    },
 };
 const _fakeCanvas = { width:0, height:0, getContext(){ return _fakeCtx; } };
 beforeAll(() => {
@@ -141,5 +147,61 @@ describe('PlayerFeedback — update / ciclo de vida', () => {
         const yInicial = fb._effects[0].sprite.position.y;
         fb.update(0.2);
         expect(fb._effects[0].sprite.position.y).toBeGreaterThan(yInicial);
+    });
+});
+
+describe('PlayerFeedback — subtipos naranja mezclados', () => {
+    it('acepta los 4 subtipos sin lanzar', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        expect(() => fb.spawn('orange_heal',   pos, '♥ 4')).not.toThrow();
+        expect(() => fb.spawn('orange_mana',   pos, '♦ 42')).not.toThrow();
+        expect(() => fb.spawn('orange_points', pos, '+100')).not.toThrow();
+        expect(() => fb.spawn('orange_slow',   pos, '⏱ slow')).not.toThrow();
+    });
+
+    it('orange_X usa gradiente mezclado con ancla intermedia en 0.5', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('orange_heal', pos);
+        expect(_gradStops).toHaveLength(3);
+        expect(_gradStops[0].offset).toBe(0.0);
+        expect(_gradStops[1].offset).toBe(0.5);
+        expect(_gradStops[2].offset).toBe(1.0);
+    });
+
+    it('tipo base (red) usa gradiente simple con ancla intermedia en 0.4', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('red', pos);
+        expect(_gradStops).toHaveLength(3);
+        expect(_gradStops[1].offset).toBe(0.4);
+    });
+
+    it('orange_heal tiene el tinte naranja (255,136,0) en el anillo intermedio', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('orange_heal', pos);
+        expect(_gradStops[1].color).toMatch(/255,\s*136,\s*0/);
+    });
+
+    it('tipo base (red) no contiene el tinte naranja', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('red', pos);
+        for (const stop of _gradStops) {
+            expect(stop.color).not.toMatch(/255,\s*136,\s*0/);
+        }
+    });
+
+    it('los 4 subtipos naranja están registrados con color base distinto', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        const baseColors = new Set();
+        for (const type of ['orange_heal', 'orange_mana', 'orange_points', 'orange_slow']) {
+            fb.spawn(type, pos);
+            baseColors.add(_gradStops[0].color); // stop central usa el color base
+        }
+        expect(baseColors.size).toBe(4);
     });
 });
