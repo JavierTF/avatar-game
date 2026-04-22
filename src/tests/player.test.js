@@ -214,3 +214,182 @@ describe('Player — métricas de movimiento: tiempo activo', () => {
         expect(p.pctTiempoActivo).toBeLessThanOrEqual(100);
     });
 });
+
+describe('Player — rangos X/Z y área ocupada', () => {
+    it('detecta rango horizontal X', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(-1, 1.6, 0), null, null, 0.016);
+        p.updateMovimiento(cam( 1, 1.6, 0), null, null, 0.016);
+        expect(p.rangoHorizontalX).toBeCloseTo(2, 1);
+    });
+
+    it('detecta rango de profundidad Z', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0, 1.6, -1), null, null, 0.016);
+        p.updateMovimiento(cam(0, 1.6,  2), null, null, 0.016);
+        expect(p.rangoProfundidadZ).toBeCloseTo(3, 1);
+    });
+
+    it('areaOcupada es rangoX * rangoZ', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(-1, 1.6, -1), null, null, 0.016);
+        p.updateMovimiento(cam( 1, 1.6,  1), null, null, 0.016);
+        // rangoX = 2, rangoZ = 2 → area = 4
+        expect(p.areaOcupada).toBeCloseTo(4, 1);
+    });
+
+    it('rangos y área son 0 sin muestras', () => {
+        const p = new Player();
+        expect(p.rangoHorizontalX).toBe(0);
+        expect(p.rangoProfundidadZ).toBe(0);
+        expect(p.areaOcupada).toBe(0);
+    });
+});
+
+describe('Player — altura promedio y velocidades medias', () => {
+    it('alturaPromedioCabeza es la media de Y de cabeza', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0, 1.0, 0), null, null, 0.016);
+        p.updateMovimiento(cam(0, 2.0, 0), null, null, 0.016);
+        p.updateMovimiento(cam(0, 1.5, 0), null, null, 0.016);
+        expect(p.alturaPromedioCabeza).toBeCloseTo(1.5, 1);
+    });
+
+    it('velocidadMediaCabeza = metros / tiempoTotal', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0, 1.6, 0), null, null, 0.016);
+        p.updateMovimiento(cam(1, 1.6, 0), null, null, 0.1); // 1m en 0.1s
+        // tiempoTotal=0.1, metros=1 → v_media = 10
+        expect(p.velocidadMediaCabeza).toBeCloseTo(10, 1);
+    });
+
+    it('velocidadMediaBrazoDch = metrosBrazoDch / tiempoTotal', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0,1.6,0), vec(0,1,0), vec(0,1,0), 0.016);
+        p.updateMovimiento(cam(0,1.6,0), vec(2,1,0), vec(0,1,0), 0.1);
+        // tiempoTotal=0.1, metrosBrazoDch=2 → 20
+        expect(p.velocidadMediaBrazoDch).toBeCloseTo(20, 1);
+    });
+
+    it('velocidades medias son 0 sin tiempoTotal', () => {
+        const p = new Player();
+        expect(p.velocidadMediaCabeza).toBe(0);
+        expect(p.velocidadMediaBrazoDch).toBe(0);
+        expect(p.velocidadMediaBrazoIzq).toBe(0);
+    });
+});
+
+describe('Player — altura máxima y alcance de brazos', () => {
+    it('alturaMaxBrazoDch trackea la Y más alta que toca c1', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0,1.6,0), vec(0, 1.2, 0), null, 0.016);
+        p.updateMovimiento(cam(0,1.6,0), vec(0, 2.3, 0), null, 0.016);
+        p.updateMovimiento(cam(0,1.6,0), vec(0, 1.0, 0), null, 0.016);
+        expect(p.alturaMaxBrazoDch).toBeCloseTo(2.3, 1);
+    });
+
+    it('alturaMaxBrazoIzq trackea la Y más alta que toca c2', () => {
+        const p = new Player();
+        p.updateMovimiento(cam(0,1.6,0), null, vec(0, 1.8, 0), 0.016);
+        p.updateMovimiento(cam(0,1.6,0), null, vec(0, 2.1, 0), 0.016);
+        expect(p.alturaMaxBrazoIzq).toBeCloseTo(2.1, 1);
+    });
+
+    it('alcanceMaxBrazoDch = máxima distancia del mando a la cabeza', () => {
+        const p = new Player();
+        // cabeza en (0,1.6,0), brazo dch se estira hasta (0,1.6,-0.8) → alcance 0.8
+        p.updateMovimiento(cam(0, 1.6, 0), vec(0, 1.6,  0),    null, 0.016);
+        p.updateMovimiento(cam(0, 1.6, 0), vec(0, 1.6, -0.8),  null, 0.016);
+        expect(p.alcanceMaxBrazoDch).toBeCloseTo(0.8, 1);
+    });
+
+    it('alturas y alcances son 0 sin muestras', () => {
+        const p = new Player();
+        expect(p.alturaMaxBrazoDch).toBe(0);
+        expect(p.alturaMaxBrazoIzq).toBe(0);
+        expect(p.alcanceMaxBrazoDch).toBe(0);
+        expect(p.alcanceMaxBrazoIzq).toBe(0);
+    });
+});
+
+describe('Player — simetría de brazos', () => {
+    it('simetría 1.0 cuando ambos brazos se movieron lo mismo', () => {
+        const p = new Player();
+        p.metrosBrazoDch = 3;
+        p.metrosBrazoIzq = 3;
+        expect(p.simetriaBrazos).toBe(1.0);
+    });
+
+    it('simetría < 1 cuando un brazo se movió más', () => {
+        const p = new Player();
+        p.metrosBrazoDch = 4;
+        p.metrosBrazoIzq = 2;
+        expect(p.simetriaBrazos).toBeCloseTo(0.5, 2);
+    });
+
+    it('simetría 1.0 si ninguno se movió (caso degenerado)', () => {
+        const p = new Player();
+        expect(p.simetriaBrazos).toBe(1.0);
+    });
+});
+
+describe('Player — saltos', () => {
+    it('detecta un salto cuando la cabeza supera el neutral +0.25m y vuelve', () => {
+        const p = new Player();
+        // Construye un baseline estable primero
+        for (let i = 0; i < 10; i++) {
+            p.updateMovimiento(cam(0, 1.6, 0), null, null, 0.016);
+        }
+        // Salto
+        p.updateMovimiento(cam(0, 1.9, 0), null, null, 0.016);
+        p.updateMovimiento(cam(0, 1.6, 0), null, null, 0.016);
+        expect(p.saltos).toBe(1);
+    });
+
+    it('no cuenta salto si la altura extra no supera 0.25m', () => {
+        const p = new Player();
+        for (let i = 0; i < 10; i++) {
+            p.updateMovimiento(cam(0, 1.6, 0), null, null, 0.016);
+        }
+        p.updateMovimiento(cam(0, 1.75, 0), null, null, 0.016);
+        p.updateMovimiento(cam(0, 1.6,  0), null, null, 0.016);
+        expect(p.saltos).toBe(0);
+    });
+});
+
+describe('Player — mana gastado e intensidad', () => {
+    it('consumeMana acumula en manaGastado', () => {
+        const p = new Player();
+        p.addMana(100);
+        p.consumeMana(0.2);   // 20
+        p.consumeMana(0.3);   // 30
+        expect(p.manaGastado).toBe(50);
+    });
+
+    it('consumeMana fallido no suma a manaGastado', () => {
+        const p = new Player();
+        p.consumeMana(0.5);   // falla: mana=0
+        expect(p.manaGastado).toBe(0);
+    });
+
+    it('intensidad "bajo" cuando tiempo activo < 40%', () => {
+        const p = new Player();
+        p.tiempoActivo = 1;
+        p.tiempoTotal  = 10;   // 10%
+        expect(p.intensidad).toBe('bajo');
+    });
+
+    it('intensidad "medio" entre 40% y 70%', () => {
+        const p = new Player();
+        p.tiempoActivo = 5;
+        p.tiempoTotal  = 10;   // 50%
+        expect(p.intensidad).toBe('medio');
+    });
+
+    it('intensidad "alto" cuando supera 70%', () => {
+        const p = new Player();
+        p.tiempoActivo = 8;
+        p.tiempoTotal  = 10;   // 80%
+        expect(p.intensidad).toBe('alto');
+    });
+});

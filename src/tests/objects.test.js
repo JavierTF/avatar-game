@@ -4,7 +4,7 @@ vi.mock('three', () => ({
     SphereGeometry:       class { dispose() {} },
     MeshStandardMaterial: class { dispose() {} constructor() { this.emissive = { multiplyScalar() {} }; } },
     Mesh: class {
-        constructor() {
+        constructor(geo, mat) {
             this.position = {
                 x: 0, y: 0, z: 0,
                 copy(v) { if (v) { this.x = v.x; this.y = v.y; this.z = v.z; } return this; },
@@ -13,6 +13,8 @@ vi.mock('three', () => ({
             };
             this.castShadow = false;
             this.rotation = { x: 0, y: 0, z: 0 };
+            this.geometry = geo || { dispose() {} };
+            this.material = mat || { dispose() {} };
         }
     },
     Color: class { constructor() {} multiplyScalar() { return this; } },
@@ -226,5 +228,67 @@ describe('BallManager — movimiento loco de la naranja', () => {
         m._moveBall(ball, 0.1, { x: 0, y: 1.6, z: 0 });
         // Con fase/freq fijos y delta 0.1, sin/cos producen valores no-cero.
         expect(ball.velocity.x !== 0 || ball.velocity.y !== 0).toBe(true);
+    });
+});
+
+describe('BallManager — callbacks de métricas', () => {
+    it('onBallSpawned se dispara con el tipo cada vez que se crea una bola', () => {
+        const m = makeManager(1);
+        const spawned = [];
+        m.onBallSpawned = (t) => spawned.push(t);
+        m.spawn('red',    { x:0, y:1.6, z:0 });
+        m.spawn('blue',   { x:0, y:1.6, z:0 });
+        m.spawn('green',  { x:0, y:1.6, z:0 });
+        m.spawn('orange', { x:0, y:1.6, z:0 });
+        expect(spawned).toEqual(['red', 'blue', 'green', 'orange']);
+    });
+
+    it('onRedEscaped se dispara cuando una roja sale de BOUNDS sin estar _dropped', () => {
+        const m = makeManager(1);
+        let escaped = 0;
+        m.onRedEscaped = () => { escaped++; };
+
+        const ball = m.spawn('red', { x: 0, y: 1.6, z: 0 });
+        // Fuerza la bola fuera de BOUNDS (y < -1 según el mock).
+        ball.mesh.position.x = 0;
+        ball.mesh.position.y = -5;
+        ball.mesh.position.z = 0;
+        // velocity cero para que no se mueva durante _moveBall.
+        ball.velocity.set(0, 0, 0);
+
+        m.update(0.016, { x: 0, y: 1.6, z: 0 });
+        expect(escaped).toBe(1);
+    });
+
+    it('onRedEscaped NO se dispara si la bola ya estaba _dropped (caída por poder)', () => {
+        const m = makeManager(1);
+        let escaped = 0;
+        m.onRedEscaped = () => { escaped++; };
+
+        const ball = m.spawn('red', { x: 0, y: 1.6, z: 0 });
+        ball._dropped = true;
+        ball.mesh.position.x = 0;
+        ball.mesh.position.y = -5;
+        ball.mesh.position.z = 0;
+        ball.velocity.set(0, 0, 0);
+
+        m.update(0.016, { x: 0, y: 1.6, z: 0 });
+        expect(escaped).toBe(0);
+    });
+
+    it('onRedEscaped NO se dispara cuando salen bolas de otro color', () => {
+        const m = makeManager(1);
+        let escaped = 0;
+        m.onRedEscaped = () => { escaped++; };
+
+        for (const type of ['blue', 'green', 'orange']) {
+            const ball = m.spawn(type, { x: 0, y: 1.6, z: 0 });
+            ball.mesh.position.x = 0;
+            ball.mesh.position.y = -5;
+            ball.mesh.position.z = 0;
+            ball.velocity.set(0, 0, 0);
+        }
+        m.update(0.016, { x: 0, y: 1.6, z: 0 });
+        expect(escaped).toBe(0);
     });
 });
