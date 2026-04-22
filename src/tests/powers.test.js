@@ -74,8 +74,32 @@ function makeMockBalls(type = 'red', count = 3) {
     return {
         balls: Array.from({ length: count }, () => ({
             type,
-            mesh: { position: { distanceTo: () => 0.1 } },
-            velocity: { set() {}, normalize() { return this; }, multiplyScalar() { return this; }, lerp() {} },
+            mesh: { position: { x: 0, y: 1, z: 0, distanceTo: () => 0.1 } },
+            velocity: {
+                x: 0, y: 0, z: 0,
+                set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; },
+                normalize() { return this; },
+                multiplyScalar() { return this; },
+                lerp() {},
+            },
+            cfg: { speed: 0.01 }
+        })),
+        remove(b) { this.balls = this.balls.filter(x => x !== b); }
+    };
+}
+
+function makeVientoBalls(positions) {
+    return {
+        balls: positions.map(([x, y, z, dist]) => ({
+            type: 'red',
+            mesh: { position: { x, y, z, distanceTo: () => dist } },
+            velocity: {
+                x: 0, y: 0, z: 0,
+                set(vx, vy, vz) { this.x = vx; this.y = vy; this.z = vz; return this; },
+                normalize() { return this; },
+                multiplyScalar() { return this; },
+                lerp() {},
+            },
             cfg: { speed: 0.01 }
         })),
         remove(b) { this.balls = this.balls.filter(x => x !== b); }
@@ -188,5 +212,71 @@ describe('Powers — efectos visuales: ciclo de vida', () => {
         const escalaInicial = powers._effects[0].scale;
         powers.update(0.1);
         expect(powers._effects[0].scale).toBeGreaterThan(escalaInicial);
+    });
+});
+
+describe('Powers — Viento Eterno: lanzamiento hacia atrás y abajo', () => {
+    const playerVec = {
+        x: 0, y: 1.6, z: 0,
+        clone() { return { ...this, clone: this.clone, distanceTo: this.distanceTo }; },
+        distanceTo(v) { return Math.hypot(v.x - this.x, v.y - this.y, v.z - this.z); },
+    };
+
+    it('afecta sólo a las bolas dentro del radio (5 m)', () => {
+        const scene  = makeMockScene();
+        const balls  = makeVientoBalls([
+            [1, 1, 0, 1.0],   // dentro
+            [2, 1, 0, 2.0],   // dentro
+            [10, 1, 0, 10.0], // fuera
+        ]);
+        const powers = new Powers(scene, makeMockPlayer(), balls, new Difficulty(1));
+        const thrown = powers.activateViento(playerVec);
+        expect(thrown).toBe(2);
+    });
+
+    it('le da velocidad Y negativa (hacia abajo) a cada bola lanzada', () => {
+        const scene  = makeMockScene();
+        const balls  = makeVientoBalls([[1, 1, 0, 1.0]]);
+        const powers = new Powers(scene, makeMockPlayer(), balls, new Difficulty(1));
+        powers.activateViento(playerVec);
+        expect(balls.balls[0].velocity.y).toBeLessThan(0);
+    });
+
+    it('la dirección horizontal se aleja del jugador', () => {
+        const scene  = makeMockScene();
+        // Bola a la derecha del jugador (x > 0) debe salir con velocidad x positiva.
+        const ballsR = makeVientoBalls([[2, 1, 0, 2.0]]);
+        new Powers(scene, makeMockPlayer(), ballsR, new Difficulty(1))
+            .activateViento(playerVec);
+        expect(ballsR.balls[0].velocity.x).toBeGreaterThan(0);
+
+        // Bola a la izquierda (x < 0) sale con velocidad x negativa.
+        const ballsL = makeVientoBalls([[-2, 1, 0, 2.0]]);
+        new Powers(scene, makeMockPlayer(), ballsL, new Difficulty(1))
+            .activateViento(playerVec);
+        expect(ballsL.balls[0].velocity.x).toBeLessThan(0);
+    });
+
+    it('marca las bolas lanzadas con _dropped=true para no relanzarlas', () => {
+        const scene  = makeMockScene();
+        const balls  = makeVientoBalls([[1, 1, 0, 1.0]]);
+        const powers = new Powers(scene, makeMockPlayer(), balls, new Difficulty(1));
+        powers.activateViento(playerVec);
+        expect(balls.balls[0]._dropped).toBe(true);
+
+        // Segunda activación no debe contar de nuevo (player tiene mana de sobra).
+        const player = makeMockPlayer(200);
+        const powers2 = new Powers(scene, player, balls, new Difficulty(1));
+        const thrown  = powers2.activateViento(playerVec);
+        expect(thrown).toBe(0);
+    });
+
+    it('sin bolas en el radio igualmente spawnea la onda visual', () => {
+        const scene  = makeMockScene();
+        const balls  = makeVientoBalls([[10, 1, 0, 10.0]]); // sólo lejana
+        const powers = new Powers(scene, makeMockPlayer(), balls, new Difficulty(1));
+        const thrown = powers.activateViento(playerVec);
+        expect(thrown).toBe(0);
+        expect(scene.added.length).toBe(1); // la esfera wireframe sí aparece
     });
 });

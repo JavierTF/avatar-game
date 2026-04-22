@@ -73,10 +73,17 @@ export class Powers {
 
     activateViento(playerPos) {
         if (!this.player.consumeMana(this._cost('viento'))) return false;
-        const balls = [...this.ballManager.balls.filter(b => b.type === 'red')];
-        for (const b of balls) this._dropBall(b);
+        const RADIUS = 5.0;
+        let thrown = 0;
+        for (const b of this.ballManager.balls) {
+            if (b.type !== 'red' || b._dropped) continue;
+            if (playerPos.distanceTo(b.mesh.position) < RADIUS) {
+                this._throwBall(b, playerPos);
+                thrown++;
+            }
+        }
         this._spawnVientoFX(playerPos);
-        return balls.length;
+        return thrown;
     }
 
     _dropBall(ball) {
@@ -86,6 +93,23 @@ export class Powers {
             (Math.random() - 0.5) * 0.05,
             -0.08,
             (Math.random() - 0.5) * 0.05
+        );
+        setTimeout(() => this.ballManager.remove(ball), 1500);
+    }
+
+    // Lanza la bola horizontalmente alejándose del jugador (radial hacia "atrás"
+    // desde su punto de vista) y con fuerte componente hacia abajo.
+    _throwBall(ball, playerPos) {
+        if (ball._dropped) return;
+        ball._dropped = true;
+        const dx  = ball.mesh.position.x - playerPos.x;
+        const dz  = ball.mesh.position.z - playerPos.z;
+        const len = Math.hypot(dx, dz) || 1;
+        const SPEED = 0.12;
+        ball.velocity.set(
+            (dx / len) * SPEED,
+            -0.06,
+            (dz / len) * SPEED
         );
         setTimeout(() => this.ballManager.remove(ball), 1500);
     }
