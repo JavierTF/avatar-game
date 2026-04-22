@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+const _up  = new THREE.Vector3(0, 1, 0);
+
 export class Powers {
     constructor(scene, player, ballManager, difficulty) {
         this.scene       = scene;
@@ -28,10 +30,9 @@ export class Powers {
 
     activateEscudo(pos1, pos2) {
         if (!this.player.consumeMana(this._cost('escudo'))) return false;
-        this._spawnHalo(pos1);
-        this._spawnHalo(pos2);
-        // Escudo activo en tiempo real: durante SHIELD_DURATION segundos,
-        // cualquier bola roja que entre en el radio alrededor de los mandos cae.
+        this._spawnEscudoFX(pos1, pos2);
+        // Escudo activo: durante SHIELD_DURATION s, cualquier bola roja que
+        // entre en el radio alrededor de los mandos cae.
         this._activeShield = {
             pos1: pos1.clone(),
             pos2: pos2.clone(),
@@ -51,7 +52,7 @@ export class Powers {
                 killed++;
             }
         }
-        this._spawnRing(playerPos);
+        this._spawnSismicoFX(playerPos);
         return killed;
     }
 
@@ -66,7 +67,7 @@ export class Powers {
                 killed++;
             }
         }
-        this._spawnBeam(playerPos, dir);
+        this._spawnLlamaFX(playerPos, dir);
         return killed;
     }
 
@@ -74,7 +75,7 @@ export class Powers {
         if (!this.player.consumeMana(this._cost('viento'))) return false;
         const balls = [...this.ballManager.balls.filter(b => b.type === 'red')];
         for (const b of balls) this._dropBall(b);
-        this._spawnWave(playerPos);
+        this._spawnVientoFX(playerPos);
         return balls.length;
     }
 
@@ -86,47 +87,103 @@ export class Powers {
             -0.08,
             (Math.random() - 0.5) * 0.05
         );
-        // Se eliminará al salir de BOUNDS (cae bajo y < -1).
         setTimeout(() => this.ballManager.remove(ball), 1500);
     }
 
-    _spawnHalo(pos) {
-        const geo  = new THREE.TorusGeometry(0.3, 0.03, 8, 32);
-        const mat  = new THREE.MeshBasicMaterial({ color: 0x88ddff, transparent: true, opacity: 0.8 });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.copy(pos);
-        this.scene.add(mesh);
-        this._effects.push({ mesh, life: 1.0, type: 'fade' });
+    // ─── Efectos visuales ──────────────────────────────────────────
+    //
+    // Cada efecto arranca muy pequeño (initScale) y crece de manera
+    // uniforme hasta el tamaño final (finalScale) en el momento en que
+    // termina su vida. La opacidad se atenúa linealmente con la vida.
+    _pushFX(mesh, { rate, initScale, finalScale, baseOpacity }) {
+        this._effects.push({
+            mesh,
+            life: 1.0,
+            rate,
+            scale: 0,
+            initScale,
+            finalScale,
+            baseOpacity,
+        });
     }
 
-    _spawnRing(pos) {
-        const geo  = new THREE.RingGeometry(0.1, 0.3, 32);
-        const mat  = new THREE.MeshBasicMaterial({ color: 0xaa8833, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+    // Escudo Ártico: columna vertical blanco-azulada que se alza entre las manos.
+    _spawnEscudoFX(pos1, pos2) {
+        const geo = new THREE.CylinderGeometry(0.45, 0.45, 1, 20, 1, true);
+        const mat = new THREE.MeshBasicMaterial({
+            color: 0xbbeeff, transparent: true, opacity: 0.55,
+            side: THREE.DoubleSide,
+        });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.copy(pos);
+        mesh.position.set(
+            (pos1.x + pos2.x) / 2,
+            (pos1.y + pos2.y) / 2 + 0.6,
+            (pos1.z + pos2.z) / 2
+        );
+        this.scene.add(mesh);
+        this._pushFX(mesh, {
+            rate: 0.5,
+            initScale:  [0.25, 0.4, 0.25],
+            finalScale: [1.8,  4.2, 1.8],
+            baseOpacity: 0.55,
+        });
+    }
+
+    // Pulso Sísmico: anillo naranja plano que se expande por el suelo.
+    _spawnSismicoFX(pos) {
+        const geo = new THREE.RingGeometry(0.6, 0.9, 48);
+        const mat = new THREE.MeshBasicMaterial({
+            color: 0xff8833, transparent: true, opacity: 0.9,
+            side: THREE.DoubleSide,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(pos.x, 0.02, pos.z);
         mesh.rotation.x = -Math.PI / 2;
         this.scene.add(mesh);
-        this._effects.push({ mesh, life: 1.0, type: 'expand', scale: 1.0 });
+        this._pushFX(mesh, {
+            rate: 0.7,
+            initScale:  [0.25, 0.25, 1],
+            finalScale: [5.5,  5.5,  1],
+            baseOpacity: 0.9,
+        });
     }
 
-    _spawnWave(pos) {
-        const geo  = new THREE.SphereGeometry(0.5, 16, 16);
-        const mat  = new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.6, wireframe: true });
+    // Llama Dragón: rayo amarillo-naranja alargado hacia la dirección de la cámara.
+    _spawnLlamaFX(pos, dir) {
+        const geo = new THREE.CylinderGeometry(0.12, 0.04, 1, 12);
+        const mat = new THREE.MeshBasicMaterial({
+            color: 0xffcc22, transparent: true, opacity: 0.85,
+        });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.copy(pos);
+        const d = dir.clone().normalize();
+        // La base del cilindro en la cabeza del jugador, el extremo hacia adelante.
+        mesh.position.set(pos.x + d.x * 0.5, pos.y + d.y * 0.5, pos.z + d.z * 0.5);
+        mesh.quaternion.setFromUnitVectors(_up, d);
         this.scene.add(mesh);
-        this._effects.push({ mesh, life: 1.0, type: 'wave' });
+        this._pushFX(mesh, {
+            rate: 0.8,
+            initScale:  [0.25, 0.4, 0.25],
+            finalScale: [1.2,  6.5, 1.2],
+            baseOpacity: 0.85,
+        });
     }
 
-    _spawnBeam(pos, dir) {
-        const length = 6;
-        const geo    = new THREE.CylinderGeometry(0.05, 0.05, length, 8);
-        const mat    = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.8 });
-        const mesh   = new THREE.Mesh(geo, mat);
-        mesh.position.copy(pos).addScaledVector(dir, length / 2);
-        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+    // Viento Eterno: onda esférica verde-celeste que se expande alrededor.
+    _spawnVientoFX(pos) {
+        const geo = new THREE.SphereGeometry(1, 20, 12);
+        const mat = new THREE.MeshBasicMaterial({
+            color: 0xbbffdd, transparent: true, opacity: 0.45,
+            wireframe: true,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(pos.x, pos.y, pos.z);
         this.scene.add(mesh);
-        this._effects.push({ mesh, life: 0.5, type: 'fade' });
+        this._pushFX(mesh, {
+            rate: 0.55,
+            initScale:  [0.25, 0.25, 0.25],
+            finalScale: [4.5,  4.5,  4.5],
+            baseOpacity: 0.45,
+        });
     }
 
     update(delta) {
@@ -147,18 +204,16 @@ export class Powers {
 
         for (let i = this._effects.length - 1; i >= 0; i--) {
             const e = this._effects[i];
-            e.life -= delta * 1.5;
-            if (e.type === 'fade') {
-                e.mesh.material.opacity = Math.max(0, e.life * 0.8);
-            } else if (e.type === 'expand') {
-                e.scale += delta * 8;
-                e.mesh.scale.setScalar(e.scale);
-                e.mesh.material.opacity = Math.max(0, e.life * 0.7);
-            } else if (e.type === 'wave') {
-                e.scale = (e.scale || 1) + delta * 10;
-                e.mesh.scale.setScalar(e.scale);
-                e.mesh.material.opacity = Math.max(0, e.life * 0.5);
-            }
+            e.life -= delta * e.rate;
+            // progreso 0 (recién invocado) → 1 (terminándose)
+            e.scale = Math.min(1, Math.max(0, 1 - e.life));
+
+            const sx = e.initScale[0] + (e.finalScale[0] - e.initScale[0]) * e.scale;
+            const sy = e.initScale[1] + (e.finalScale[1] - e.initScale[1]) * e.scale;
+            const sz = e.initScale[2] + (e.finalScale[2] - e.initScale[2]) * e.scale;
+            e.mesh.scale.set(sx, sy, sz);
+            e.mesh.material.opacity = Math.max(0, e.baseOpacity * Math.max(0, e.life));
+
             if (e.life <= 0) {
                 this.scene.remove(e.mesh);
                 e.mesh.geometry.dispose();

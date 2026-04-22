@@ -22,12 +22,21 @@ vi.mock('three', () => ({
     Mesh: class {
         constructor() {
             const self = this;
-            this.position = { copy(){ return self.position; }, addScaledVector(){ return self.position; } };
+            this.position = {
+                x: 0, y: 0, z: 0,
+                copy(){ return self.position; },
+                addScaledVector(){ return self.position; },
+                set(x, y, z) { self.position.x = x; self.position.y = y; self.position.z = z; return self.position; },
+            };
             this.rotation = { x: 0 };
             this.material = { opacity: 1, dispose(){} };
             this.geometry = { dispose(){} };
             this.quaternion = { setFromUnitVectors(){} };
-            this.scale = { setScalar(){} };
+            this.scale = {
+                x: 1, y: 1, z: 1,
+                setScalar(v) { this.x = this.y = this.z = v; return this; },
+                set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; },
+            };
         }
     },
     MeshBasicMaterial: class { constructor() { this.opacity = 1; } dispose() {} },
@@ -112,11 +121,11 @@ describe('Powers — costes de mana (tabla del documento)', () => {
 const mockVec = { x:0,y:0,z:0, clone(){ return this; }, normalize(){ return this; }, multiplyScalar(){ return this; }, subVectors(){ return this; }, distanceTo(){ return 0; } };
 
 describe('Powers — efectos visuales: se añaden a la escena', () => {
-    it('activateEscudo añade 2 halos (uno por mando)', () => {
+    it('activateEscudo añade la columna de escudo', () => {
         const scene  = makeMockScene();
         const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
         powers.activateEscudo(mockVec, mockVec);
-        expect(scene.added.length).toBe(2);
+        expect(scene.added.length).toBe(1);
     });
 
     it('activateSismico añade un anillo de onda', () => {
@@ -156,9 +165,9 @@ describe('Powers — efectos visuales: ciclo de vida', () => {
         const scene  = makeMockScene();
         const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
         powers.activateEscudo(mockVec, mockVec);
-        expect(scene.added.length).toBe(2);
-        // Avanzar suficiente tiempo para que expiren (life empieza en 1.0, baja a 1.5*delta)
-        powers.update(2.0);
+        expect(scene.added.length).toBe(1);
+        // Avanzar suficiente tiempo para que expiren (life=1.0, rate=0.5 → 2s).
+        powers.update(2.5);
         expect(scene.added.length).toBe(0);
     });
 
