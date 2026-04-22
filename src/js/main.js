@@ -11,10 +11,11 @@ import { CollisionSystem } from './collision.js';
 import { HUD }         from './hud.js';
 import { Metrics }     from './metrics.js';
 import { PlayerFeedback } from './feedback.js';
+import { ControllerTrail } from './trail.js';
 
 let renderer, scene, camera;
 let c1, c2, cg1, cg2;
-let player, difficulty, balls, gestures, powers, collision, hud, metrics, feedback;
+let player, difficulty, balls, gestures, powers, collision, hud, metrics, feedback, trail;
 let config;
 let clock;
 let running = false;
@@ -47,6 +48,8 @@ async function init() {
     scene    = createScene();
     camera   = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50);
     camera.position.set(0, 1.6, 3);
+
+    trail = new ControllerTrail(scene);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -274,6 +277,7 @@ function renderLoop() {
 
     powers.update(delta);
     feedback.update(delta);
+    trail.update(delta, held1 && held2, gData.pos1, gData.pos2);
     player.updateMovimiento(camera, gData.pos1, gData.pos2, delta);
 
     hud.refresh(player, difficulty.nivel);
