@@ -24,6 +24,8 @@ export class BallManager {
         this.balls      = [];
         this._spawnTimer = 0;
         this._orangeCooldown = 0;
+        this.onBallSpawned = null;   // (type) => void
+        this.onRedEscaped  = null;   // () => void
     }
 
     // Devuelve pesos [red, blue, green, orange] según nivel.
@@ -69,6 +71,11 @@ export class BallManager {
             const b = this.balls[i];
             this._moveBall(b, delta, playerPos);
             if (this._outOfBounds(b.mesh.position)) {
+                // Roja que sale por los límites sin haber sido golpeada / caída:
+                // el jugador la esquivó con éxito.
+                if (b.type === 'red' && !b._dropped && this.onRedEscaped) {
+                    this.onRedEscaped();
+                }
                 this._remove(i);
             }
         }
@@ -98,6 +105,7 @@ export class BallManager {
         }
         this.scene.add(mesh);
         this.balls.push(ball);
+        if (this.onBallSpawned) this.onBallSpawned(type);
         return ball;
     }
 

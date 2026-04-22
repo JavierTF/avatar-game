@@ -18,6 +18,7 @@ export class Player {
         this.combo    = 0;
         this.maxCombo = 0;
         this.vivo     = true;
+        this.manaGastado = 0;
 
         // Métricas de movimiento
         this.metros                = 0;
@@ -27,18 +28,35 @@ export class Player {
         this.velocidadMaxBrazoDch  = 0;
         this.velocidadMaxBrazoIzq  = 0;
         this.agachadas             = 0;
+        this.saltos                = 0;
         this.desplazamientoLateral = 0;
         this.tiempoActivo          = 0;
         this.tiempoTotal           = 0;
 
-        // Estado interno de tracking
-        this._headInit  = false;
-        this._c1Init    = false;
-        this._c2Init    = false;
+        // Rangos y altura de cabeza
         this._headYMax  = -Infinity;
         this._headYMin  =  Infinity;
-        this._headYHigh = null;
-        this._inSquat   = false;
+        this._headXMax  = -Infinity;
+        this._headXMin  =  Infinity;
+        this._headZMax  = -Infinity;
+        this._headZMin  =  Infinity;
+        this._headYSum    = 0;
+        this._headSamples = 0;
+
+        // Altura máxima y alcance máximo por cada brazo
+        this._c1YMax     = -Infinity;
+        this._c2YMax     = -Infinity;
+        this._c1ReachMax = 0;
+        this._c2ReachMax = 0;
+
+        // Estado interno de tracking
+        this._headInit     = false;
+        this._c1Init       = false;
+        this._c2Init       = false;
+        this._headYHigh    = null;
+        this._inSquat      = false;
+        this._headYNeutral = null;
+        this._inJump       = false;
     }
 
     addMana(v) {
@@ -49,6 +67,7 @@ export class Player {
         const cost = this.maxMana * pct;
         if (this.mana < cost) return false;
         this.mana -= cost;
+        this.manaGastado += cost;
         return true;
     }
 
@@ -93,11 +112,19 @@ export class Player {
             if (dHead + movC1 + movC2 > 0.005) this.tiempoActivo += delta;
         }
 
-        // Rango vertical
+        // Rangos X/Y/Z
         if (_head.y > this._headYMax) this._headYMax = _head.y;
         if (_head.y < this._headYMin) this._headYMin = _head.y;
+        if (_head.x > this._headXMax) this._headXMax = _head.x;
+        if (_head.x < this._headXMin) this._headXMin = _head.x;
+        if (_head.z > this._headZMax) this._headZMax = _head.z;
+        if (_head.z < this._headZMin) this._headZMin = _head.z;
 
-        // Agachadas
+        // Altura promedio (muestreo continuo)
+        this._headYSum += _head.y;
+        this._headSamples++;
+
+        // Agachadas — referencia: altura máxima vista hasta ahora
         if (this._headYHigh === null) this._headYHigh = _head.y;
         if (_head.y > this._headYHigh) this._headYHigh = _head.y;
         if (!this._inSquat && _head.y < this._headYHigh - 0.30) {
@@ -105,6 +132,19 @@ export class Player {
         } else if (this._inSquat && _head.y > this._headYHigh - 0.15) {
             this.agachadas++;
             this._inSquat = false;
+        }
+
+        // Saltos — referencia: "altura neutral" con media móvil lenta
+        if (this._headYNeutral === null) this._headYNeutral = _head.y;
+        if (!this._inJump) {
+            // baseline se actualiza sólo cuando no está saltando
+            this._headYNeutral = this._headYNeutral * 0.995 + _head.y * 0.005;
+        }
+        if (!this._inJump && _head.y > this._headYNeutral + 0.25) {
+            this._inJump = true;
+        } else if (this._inJump && _head.y < this._headYNeutral + 0.08) {
+            this.saltos++;
+            this._inJump = false;
         }
 
         _prevHead.copy(_head);
@@ -120,6 +160,9 @@ export class Player {
                     if (v > this.velocidadMaxBrazoDch) this.velocidadMaxBrazoDch = v;
                 }
             }
+            if (c1pos.y > this._c1YMax) this._c1YMax = c1pos.y;
+            const reach1 = _head.distanceTo(c1pos);
+            if (reach1 > this._c1ReachMax) this._c1ReachMax = reach1;
             _prevC1.copy(c1pos);
             this._c1Init = true;
         }
@@ -133,6 +176,9 @@ export class Player {
                     if (v > this.velocidadMaxBrazoIzq) this.velocidadMaxBrazoIzq = v;
                 }
             }
+            if (c2pos.y > this._c2YMax) this._c2YMax = c2pos.y;
+            const reach2 = _head.distanceTo(c2pos);
+            if (reach2 > this._c2ReachMax) this._c2ReachMax = reach2;
             _prevC2.copy(c2pos);
             this._c2Init = true;
         }
@@ -143,10 +189,76 @@ export class Player {
             Math.round((this._headYMax - this._headYMin) * 100) / 100;
     }
 
+    get rangoHorizontalX() {
+        return this._headXMax === -Infinity ? 0 :
+            Math.round((this._headXMax - this._headXMin) * 100) / 100;
+    }
+
+    get rangoProfundidadZ() {
+        return this._headZMax === -Infinity ? 0 :
+            Math.round((this._headZMax - this._headZMin) * 100) / 100;
+    }
+
+    get areaOcupada() {
+        return Math.round(this.rangoHorizontalX * this.rangoProfundidadZ * 100) / 100;
+    }
+
+    get alturaPromedioCabeza() {
+        return this._headSamples > 0
+            ? Math.round((this._headYSum / this._headSamples) * 100) / 100
+            : 0;
+    }
+
+    get velocidadMediaCabeza() {
+        return this.tiempoTotal > 0 ? this.metros / this.tiempoTotal : 0;
+    }
+
+    get velocidadMediaBrazoDch() {
+        return this.tiempoTotal > 0 ? this.metrosBrazoDch / this.tiempoTotal : 0;
+    }
+
+    get velocidadMediaBrazoIzq() {
+        return this.tiempoTotal > 0 ? this.metrosBrazoIzq / this.tiempoTotal : 0;
+    }
+
+    get alturaMaxBrazoDch() {
+        return this._c1YMax === -Infinity ? 0 : Math.round(this._c1YMax * 100) / 100;
+    }
+
+    get alturaMaxBrazoIzq() {
+        return this._c2YMax === -Infinity ? 0 : Math.round(this._c2YMax * 100) / 100;
+    }
+
+    get alcanceMaxBrazoDch() {
+        return Math.round(this._c1ReachMax * 100) / 100;
+    }
+
+    get alcanceMaxBrazoIzq() {
+        return Math.round(this._c2ReachMax * 100) / 100;
+    }
+
+    // Ratio 0-1: 1 = simetría perfecta; menor si un brazo se movió bastante más que el otro.
+    get simetriaBrazos() {
+        const d = this.metrosBrazoDch;
+        const i = this.metrosBrazoIzq;
+        if (d === 0 && i === 0) return 1.0;
+        const min = Math.min(d, i);
+        const max = Math.max(d, i);
+        return max > 0 ? Math.round((min / max) * 100) / 100 : 1.0;
+    }
+
     get pctTiempoActivo() {
         return this.tiempoTotal > 0
             ? Math.round((this.tiempoActivo / this.tiempoTotal) * 100)
             : 0;
+    }
+
+    // Cualitativa: "bajo" (<40%), "medio" (40-70%), "alto" (>70%)
+    get intensidad() {
+        const pct = this.pctTiempoActivo;
+        if (pct > 70) return 'alto';
+        if (pct > 40) return 'medio';
+        return 'bajo';
     }
 
     getState() {

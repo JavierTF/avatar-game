@@ -160,6 +160,9 @@ function startGame() {
         balls.applySpeedMultiplier();
     };
 
+    balls.onBallSpawned = (type) => metrics.ballSpawned(type);
+    balls.onRedEscaped  = ()     => metrics.redEscaped();
+
     collision.onRedHit = (hitPos) => {
         player.hit();
         metrics.ballHit('red');
@@ -179,7 +182,7 @@ function startGame() {
     };
 
     collision.onOrangeHit = (effect, hitPos) => {
-        metrics.ballHit('orange');
+        metrics.ballHit('orange', effect);
         applyOrangeEffect(effect);
         let label = '';
         if (effect === 'heal')   label = `♥ ${player.vida}`;
