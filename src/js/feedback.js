@@ -6,6 +6,32 @@ const COLORS = {
     green: 0x22cc55,
 };
 
+function hexToRGB(hex) {
+    return { r: (hex >> 16) & 0xff, g: (hex >> 8) & 0xff, b: hex & 0xff };
+}
+
+// Destello circular con degradado radial, siempre de cara a la cámara.
+function makeGlowSprite(hexColor) {
+    const canvas  = document.createElement('canvas');
+    canvas.width  = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    const { r, g, b } = hexToRGB(hexColor);
+
+    const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0.0, `rgba(${r},${g},${b},0.85)`);
+    grad.addColorStop(0.4, `rgba(${r},${g},${b},0.35)`);
+    grad.addColorStop(1.0, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 128, 128);
+
+    const tex    = new THREE.CanvasTexture(canvas);
+    const mat    = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.9, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(0.6, 0.6, 1);
+    return sprite;
+}
+
 function makeTextSprite(text, hexColor) {
     const canvas  = document.createElement('canvas');
     canvas.width  = 256;
@@ -29,52 +55,55 @@ export class PlayerFeedback {
         this._effects = [];
     }
 
-    spawn(type, playerPos, text = '') {
+    // `hitPos` es la última posición en la que el jugador vio la bola.
+    spawn(type, hitPos, text = '') {
         const color = COLORS[type] ?? 0xffffff;
 
-        // Halo expansivo
-        const geo  = new THREE.TorusGeometry(0.5, 0.04, 8, 48);
-        const mat  = new THREE.MeshBasicMaterial({
-            color, transparent: true, opacity: 0.45, side: THREE.DoubleSide
-        });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.copy(playerPos);
-        mesh.rotation.x = -Math.PI / 2;
-        this.scene.add(mesh);
+        const halo = makeGlowSprite(color);
+        halo.position.copy(hitPos);
+        this.scene.add(halo);
 
-        // Texto flotante con la métrica
-        let sprite = null;
+        let textSprite = null;
         if (text) {
-            sprite = makeTextSprite(text, color);
-            sprite.position.set(playerPos.x, playerPos.y + 0.4, playerPos.z);
-            this.scene.add(sprite);
+            textSprite = makeTextSprite(text, color);
+            textSprite.position.set(hitPos.x, hitPos.y + 0.35, hitPos.z);
+            this.scene.add(textSprite);
         }
 
-        this._effects.push({ mesh, sprite, life: 1.0, scale: 1.0 });
+        // Conservamos `mesh`/`sprite` como alias hacia halo/text por
+        // compatibilidad con el resto de consumidores y los tests.
+        this._effects.push({
+            mesh:   halo,
+            sprite: textSprite,
+            halo,
+            text:   textSprite,
+            life:   1.0,
+            scale:  0.6,
+        });
     }
 
     update(delta) {
         for (let i = this._effects.length - 1; i >= 0; i--) {
             const e = this._effects[i];
             e.life  -= delta * 2.5;
-            e.scale += delta * 6;
+            e.scale += delta * 1.2; // expansión suave del destello
 
-            e.mesh.scale.setScalar(e.scale);
-            e.mesh.material.opacity = Math.max(0, e.life * 0.45);
+            e.halo.scale.set(e.scale, e.scale, 1);
+            e.halo.material.opacity = Math.max(0, e.life * 0.9);
 
-            if (e.sprite) {
-                e.sprite.position.y += delta * 0.8; // flota hacia arriba
-                e.sprite.material.opacity = Math.max(0, e.life);
+            if (e.text) {
+                e.text.position.y += delta * 0.6;
+                e.text.material.opacity = Math.max(0, e.life);
             }
 
             if (e.life <= 0) {
-                this.scene.remove(e.mesh);
-                e.mesh.geometry.dispose();
-                e.mesh.material.dispose();
-                if (e.sprite) {
-                    this.scene.remove(e.sprite);
-                    e.sprite.material.map.dispose();
-                    e.sprite.material.dispose();
+                this.scene.remove(e.halo);
+                e.halo.material.map.dispose();
+                e.halo.material.dispose();
+                if (e.text) {
+                    this.scene.remove(e.text);
+                    e.text.material.map.dispose();
+                    e.text.material.dispose();
                 }
                 this._effects.splice(i, 1);
             }

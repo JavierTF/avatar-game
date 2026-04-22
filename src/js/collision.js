@@ -35,13 +35,15 @@ export class CollisionSystem {
 
             if (ball.type === 'red') {
                 if ((hit1 || hit2) || headHit) {
+                    const pos = ball.mesh.position.clone();
                     this.ballManager.remove(ball);
-                    if (this.onRedHit) this.onRedHit();
+                    if (this.onRedHit) this.onRedHit(pos);
                 }
             } else if (ball.type === 'blue') {
                 if (hit1 || hit2) {
+                    const pos = ball.mesh.position.clone();
                     this.ballManager.remove(ball);
-                    if (this.onBlueHit) this.onBlueHit();
+                    if (this.onBlueHit) this.onBlueHit(pos);
                 }
             } else if (ball.type === 'green') {
                 if (ball.grabbed) continue;

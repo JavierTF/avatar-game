@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 
-const _fakeCtx = { fillStyle:'', font:'', textAlign:'', textBaseline:'', fillText(){} };
+const _fakeCtx = {
+    fillStyle: '', font: '', textAlign: '', textBaseline: '',
+    fillText(){}, fillRect(){},
+    createRadialGradient(){ return { addColorStop(){} }; },
+};
 const _fakeCanvas = { width:0, height:0, getContext(){ return _fakeCtx; } };
 beforeAll(() => {
     vi.spyOn(document, 'createElement').mockImplementation((tag) =>
@@ -27,7 +31,15 @@ vi.mock('three', () => ({
     CanvasTexture: class { dispose() {} },
     SpriteMaterial: class { constructor() { this.opacity = 1; this.map = { dispose(){} }; } dispose() {} },
     Sprite: class {
-        constructor() { this.position = { x:0, y:0, z:0, set(x,y,z){ this.x=x;this.y=y;this.z=z; } }; this.scale = { set(){} }; this.material = { opacity:1, map:{ dispose(){} }, dispose(){} }; }
+        constructor() {
+            this.position = {
+                x: 0, y: 0, z: 0,
+                set(x, y, z) { this.x = x; this.y = y; this.z = z; },
+                copy(v)      { this.x = v.x; this.y = v.y; this.z = v.z; },
+            };
+            this.scale    = { set(){} };
+            this.material = { opacity: 1, map: { dispose(){} }, dispose(){} };
+        }
     },
     DoubleSide: 1,
 }));

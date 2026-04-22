@@ -157,18 +157,18 @@ function startGame() {
         balls.applySpeedMultiplier();
     };
 
-    collision.onRedHit = () => {
+    collision.onRedHit = (hitPos) => {
         player.hit();
         metrics.ballHit('red');
-        feedback.spawn('red', _camPos, `♥ ${player.vida}`);
+        feedback.spawn('red', hitPos, `♥ ${player.vida}`);
         if (!player.vivo) endGame();
     };
 
-    collision.onBlueHit = () => {
+    collision.onBlueHit = (hitPos) => {
         player.hitBlue();
         metrics.ballHit('blue');
         const label = player.combo > 1 ? `x${player.combo}` : `+${player._puntosAzul}`;
-        feedback.spawn('blue', _camPos, label);
+        feedback.spawn('blue', hitPos, label);
     };
 
     collision.onGreenGrabbed = (ball, ctrl) => {
@@ -230,10 +230,11 @@ function _activateGreen(ball, ctrl) {
     const ctrlPos = new THREE.Vector3();
     ctrl.getWorldPosition(ctrlPos);
     const headY = _camPos.y;
+    const hitPos = ball.mesh.position.clone();
     if (ctrlPos.y >= headY - 0.15) {
         player.heal();
         metrics.ballHit('green');
-        feedback.spawn('green', _camPos, '+♥');
+        feedback.spawn('green', hitPos, '+♥');
     }
     balls.remove(ball);
 }
