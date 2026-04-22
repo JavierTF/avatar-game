@@ -196,6 +196,9 @@ function applyOrangeEffect(effect) {
 }
 
 function handlePowers(gData) {
+    // Los poderes sólo pueden activarse con ambos gatillos presionados.
+    if (!held1 || !held2) return;
+
     const { delta1, delta2, pos1, pos2 } = gData;
 
     if (gestures.check('power_escudo', delta1, delta2)) {
