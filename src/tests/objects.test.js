@@ -36,21 +36,21 @@ function makeManager(nivel = 1) {
 }
 
 describe('BallManager — pesos de spawn', () => {
-    it('nivel 1: 4 verdes, 4 azules, 0 naranjas de 20', () => {
+    it('nivel 1: 4 verdes, 4 azules, 2 naranjas de 20', () => {
         const m = makeManager(1);
         const w = m._spawnWeights();
         expect(w.green).toBe(4);
         expect(w.blue).toBe(4);
-        expect(w.orange).toBe(0);
+        expect(w.orange).toBe(2);
         expect(w.red + w.blue + w.green + w.orange).toBe(20);
     });
 
-    it('nivel 11+: 2 verdes, 2 azules, 2 naranjas de 20', () => {
+    it('nivel 11+: 2 verdes, 2 azules, 1 naranja de 20', () => {
         const m = makeManager(11);
         const w = m._spawnWeights();
         expect(w.green).toBe(2);
         expect(w.blue).toBe(2);
-        expect(w.orange).toBe(2);
+        expect(w.orange).toBe(1);
         expect(w.red + w.blue + w.green + w.orange).toBe(20);
     });
 
@@ -69,10 +69,10 @@ describe('BallManager — pesos de spawn', () => {
         expect(w11.blue).toBeLessThanOrEqual(w1.blue);
     });
 
-    it('naranjas aumentan al subir el nivel', () => {
+    it('naranjas disminuyen al subir el nivel', () => {
         const w1  = makeManager(1)._spawnWeights();
         const w11 = makeManager(11)._spawnWeights();
-        expect(w11.orange).toBeGreaterThanOrEqual(w1.orange);
+        expect(w11.orange).toBeLessThanOrEqual(w1.orange);
     });
 
     it('_pickType devuelve un tipo válido', () => {
@@ -84,8 +84,9 @@ describe('BallManager — pesos de spawn', () => {
         }
     });
 
-    it('nivel 1 nunca genera naranja', () => {
+    it('mientras el cooldown está activo no genera naranja', () => {
         const m = makeManager(1);
+        m._orangeCooldown = 5;
         const tipos = Array.from({ length: 200 }, () => m._pickType());
         expect(tipos).not.toContain('orange');
     });

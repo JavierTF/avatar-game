@@ -175,9 +175,15 @@ function startGame() {
         else            grabbedBall2 = ball;
     };
 
-    collision.onOrangeHit = (effect) => {
+    collision.onOrangeHit = (effect, hitPos) => {
         metrics.ballHit('orange');
         applyOrangeEffect(effect);
+        let label = '';
+        if (effect === 'heal')   label = `♥ ${player.vida}`;
+        if (effect === 'mana')   label = `♦ ${Math.round(player.mana)}`;
+        if (effect === 'points') label = `+100`;
+        if (effect === 'slow')   label = `⏱ slow`;
+        feedback.spawn('orange_' + effect, hitPos, label);
     };
 
     running = true;
@@ -236,7 +242,7 @@ function _activateGreen(ball, ctrl) {
     if (ctrlPos.y >= headY - 0.15) {
         player.heal();
         metrics.ballHit('green');
-        feedback.spawn('green', hitPos, '+♥');
+        feedback.spawn('green', hitPos, `♥ ${player.vida}`);
     }
     balls.remove(ball);
 }

@@ -23,22 +23,28 @@ export class BallManager {
         this.difficulty = difficulty;
         this.balls      = [];
         this._spawnTimer = 0;
+        this._orangeCooldown = 0;
     }
 
     // Devuelve pesos [red, blue, green, orange] según nivel.
-    // Nivel 1 (fácil): de 20 → 12 roja, 4 azul, 4 verde, 0 naranja
-    // Nivel 11+ (difícil): de 20 → 14 roja, 2 azul, 2 verde, 2 naranja
+    // La naranja es más frecuente a bajo nivel y más rara a alto.
     _spawnWeights() {
         const t = Math.min((this.difficulty.nivel - 1) / 10, 1);
-        const green  = Math.round(4 - 2 * t);   // 4 → 2
-        const blue   = Math.round(4 - 2 * t);   // 4 → 2
-        const orange = Math.round(2 * t);        // 0 → 2
+        const green  = Math.round(4 - 2 * t);              // 4 → 2
+        const blue   = Math.round(4 - 2 * t);              // 4 → 2
+        const orange = Math.max(1, Math.round(2 - t));     // 2 → 1
         const red    = 20 - green - blue - orange;
         return { red, blue, green, orange };
     }
 
+    // Cooldown entre naranjas: menor a bajo nivel, mayor a alto.
+    _orangeCooldownDuration() {
+        return 10 + (this.difficulty.nivel - 1) * 2;
+    }
+
     _pickType() {
         const w = this._spawnWeights();
+        if (this._orangeCooldown > 0) w.orange = 0;
         const pool = [];
         for (const [type, count] of Object.entries(w)) {
             for (let i = 0; i < count; i++) pool.push(type);
@@ -47,11 +53,16 @@ export class BallManager {
     }
 
     update(delta, playerPos) {
+        this._orangeCooldown = Math.max(0, this._orangeCooldown - delta);
         const rate = this.difficulty.spawnRate();
         this._spawnTimer += delta;
         if (this._spawnTimer >= rate) {
             this._spawnTimer = 0;
-            this.spawn(this._pickType(), playerPos);
+            const type = this._pickType();
+            if (type === 'orange') {
+                this._orangeCooldown = this._orangeCooldownDuration();
+            }
+            this.spawn(type, playerPos);
         }
 
         for (let i = this.balls.length - 1; i >= 0; i--) {
@@ -78,6 +89,13 @@ export class BallManager {
         const vel = this._velocity(type, cfg, spawnPos, playerPos);
 
         const ball = { mesh, type, velocity: vel, cfg, alive: true, grabbed: false, ctrlPos: null };
+        if (type === 'orange') {
+            const effects = ['heal', 'mana', 'points', 'slow'];
+            ball.effect      = effects[Math.floor(Math.random() * effects.length)];
+            ball._age        = 0;
+            ball._chaosPhase = Math.random() * Math.PI * 2;
+            ball._chaosFreq  = 7 + Math.random() * 6;
+        }
         this.scene.add(mesh);
         this.balls.push(ball);
         return ball;
@@ -128,11 +146,27 @@ export class BallManager {
             ball.mesh.position.copy(ball.ctrlPos);
             return;
         }
-        if (ball.type === 'orange' && ball.cfg.pattern === 'homing' && !ball._bounced) {
-            _target.set(playerPos.x, playerPos.y, playerPos.z);
-            _dir.subVectors(_target, ball.mesh.position).normalize()
-                .multiplyScalar(ball.cfg.speed * this.difficulty.speedMult);
-            ball.velocity.lerp(_dir, 0.02);
+        // Movimiento LOCO para la naranja: X e Y oscilan con dos ondas
+        // superpuestas de distinta frecuencia; Z se mantiene o hace homing suave.
+        if (ball.type === 'orange' && !ball._bounced) {
+            ball._age += delta;
+            const spd = ball.cfg.speed * this.difficulty.speedMult;
+            const f   = ball._chaosFreq;
+            const p   = ball._chaosPhase;
+            ball.velocity.x = (
+                Math.sin(ball._age * f + p) * 2.5 +
+                Math.sin(ball._age * f * 1.7 + p * 1.3) * 1.0
+            ) * spd;
+            ball.velocity.y = (
+                Math.cos(ball._age * f * 0.7 + p) * 1.8 +
+                Math.cos(ball._age * f * 2.3 + p * 0.6) * 0.6
+            ) * spd;
+            if (ball.cfg.pattern === 'homing') {
+                _target.set(playerPos.x, playerPos.y, playerPos.z);
+                _dir.subVectors(_target, ball.mesh.position).normalize()
+                    .multiplyScalar(spd);
+                ball.velocity.z = _dir.z;
+            }
         }
         ball.mesh.position.add(ball.velocity);
         ball.mesh.rotation.x += 0.02;

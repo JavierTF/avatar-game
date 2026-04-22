@@ -57,6 +57,7 @@ export class CollisionSystem {
             } else if (ball.type === 'orange') {
                 if (!ball._bounced && (hit1 || hit2)) {
                     const ctrlPos = hit1 ? p1 : p2;
+                    const hitPos  = ball.mesh.position.clone();
                     // Rebote hacia el lado contrario al impacto:
                     // dirección = (bola - mando), así sale alejándose.
                     const bounceDir = new THREE.Vector3()
@@ -64,7 +65,8 @@ export class CollisionSystem {
                         .normalize();
                     ball.velocity.copy(bounceDir.multiplyScalar(0.04));
                     ball._bounced = true;
-                    if (this.onOrangeHit) this.onOrangeHit(ball.cfg.effect);
+                    const effect = ball.effect || ball.cfg.effect;
+                    if (this.onOrangeHit) this.onOrangeHit(effect, hitPos);
                 }
             }
         }

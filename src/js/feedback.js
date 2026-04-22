@@ -4,14 +4,21 @@ const COLORS = {
     red:   0xff2222,
     blue:  0x2255ff,
     green: 0x22cc55,
+    // Variantes de naranja: color del efecto + tinte naranja mezclado.
+    orange_heal:   0x22cc55,
+    orange_mana:   0x2255ff,
+    orange_points: 0xffdd33,
+    orange_slow:   0xaa55ff,
 };
+const ORANGE_MIX = 0xff8800;
 
 function hexToRGB(hex) {
     return { r: (hex >> 16) & 0xff, g: (hex >> 8) & 0xff, b: hex & 0xff };
 }
 
 // Destello circular con degradado radial, siempre de cara a la cámara.
-function makeGlowSprite(hexColor) {
+// Si `mixColor` es distinto de null, el anillo intermedio se pinta con ese tono.
+function makeGlowSprite(hexColor, mixColor = null) {
     const canvas  = document.createElement('canvas');
     canvas.width  = 128;
     canvas.height = 128;
@@ -19,9 +26,16 @@ function makeGlowSprite(hexColor) {
     const { r, g, b } = hexToRGB(hexColor);
 
     const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grad.addColorStop(0.0, `rgba(${r},${g},${b},0.85)`);
-    grad.addColorStop(0.4, `rgba(${r},${g},${b},0.35)`);
-    grad.addColorStop(1.0, `rgba(${r},${g},${b},0)`);
+    if (mixColor !== null) {
+        const m = hexToRGB(mixColor);
+        grad.addColorStop(0.0, `rgba(${r},${g},${b},0.85)`);
+        grad.addColorStop(0.5, `rgba(${m.r},${m.g},${m.b},0.55)`);
+        grad.addColorStop(1.0, `rgba(${r},${g},${b},0)`);
+    } else {
+        grad.addColorStop(0.0, `rgba(${r},${g},${b},0.85)`);
+        grad.addColorStop(0.4, `rgba(${r},${g},${b},0.35)`);
+        grad.addColorStop(1.0, `rgba(${r},${g},${b},0)`);
+    }
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 128, 128);
 
@@ -58,8 +72,9 @@ export class PlayerFeedback {
     // `hitPos` es la última posición en la que el jugador vio la bola.
     spawn(type, hitPos, text = '') {
         const color = COLORS[type] ?? 0xffffff;
+        const mix   = type.startsWith('orange_') ? ORANGE_MIX : null;
 
-        const halo = makeGlowSprite(color);
+        const halo = makeGlowSprite(color, mix);
         halo.position.copy(hitPos);
         this.scene.add(halo);
 

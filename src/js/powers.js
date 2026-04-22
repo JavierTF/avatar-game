@@ -125,7 +125,7 @@ export class Powers {
             rate: 0.5,
             initScale:  [0.25, 0.4, 0.25],
             finalScale: [1.8,  4.2, 1.8],
-            baseOpacity: 0.55,
+            baseOpacity: 0.30,
         });
     }
 
@@ -144,7 +144,7 @@ export class Powers {
             rate: 0.7,
             initScale:  [0.25, 0.25, 1],
             finalScale: [5.5,  5.5,  1],
-            baseOpacity: 0.9,
+            baseOpacity: 0.50,
         });
     }
 
@@ -164,7 +164,7 @@ export class Powers {
             rate: 0.8,
             initScale:  [0.25, 0.4, 0.25],
             finalScale: [1.2,  6.5, 1.2],
-            baseOpacity: 0.85,
+            baseOpacity: 0.50,
         });
     }
 
@@ -182,7 +182,7 @@ export class Powers {
             rate: 0.55,
             initScale:  [0.25, 0.25, 0.25],
             finalScale: [4.5,  4.5,  4.5],
-            baseOpacity: 0.45,
+            baseOpacity: 0.30,
         });
     }
 
