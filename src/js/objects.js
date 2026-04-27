@@ -222,12 +222,14 @@ export class BallManager {
         for (let i = this.balls.length - 1; i >= 0; i--) this._remove(i);
     }
 
-    // Level-1 grab hint: bright emissive glow when controller is in grab range
-    updateGreenHints(nivel, p1, p2) {
-        const GRAB_R = 0.35; // mismo radio generoso que el agarre en collision.js
+    // Hint visual: brillo verde cuando el mando está en rango de agarre.
+    // Activo en cualquier nivel. Las bolas ya agarradas o convertidas en muro
+    // se excluyen.
+    updateGreenHints(p1, p2) {
+        const GRAB_R = 0.45;  // coincide con GREEN_GRAB_R de collision.js
         for (const b of this.balls) {
-            if (b.type !== 'green' || b.grabbed) continue;
-            const near = nivel === 1 && (
+            if (b.type !== 'green' || b.grabbed || b._wall) continue;
+            const near = (
                 p1.distanceTo(b.mesh.position) < GRAB_R ||
                 p2.distanceTo(b.mesh.position) < GRAB_R
             );
