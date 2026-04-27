@@ -5,7 +5,7 @@ const COLORS = {
     red:    0xff2222,
     blue:   0x2255ff,
     green:  0x22cc55,
-    orange: 0xff8800,
+    orange: 0xff2222,  // visualmente roja: la naranja toma el lugar de la roja
 };
 
 function randomGeo() {
@@ -23,30 +23,21 @@ export class BallManager {
         this.difficulty = difficulty;
         this.balls      = [];
         this._spawnTimer = 0;
-        this._orangeCooldown = 0;
         this.onBallSpawned = null;   // (type) => void
-        this.onRedEscaped  = null;   // () => void
+        this.onRedEscaped  = null;   // () => void (legacy: sin rojas en spawn)
     }
 
-    // Devuelve pesos [red, blue, green, orange] según nivel.
-    // La naranja es más frecuente a bajo nivel y más rara a alto.
+    // Pesos de spawn. La naranja toma el lugar de la roja (se elimina del juego).
     _spawnWeights() {
         const t = Math.min((this.difficulty.nivel - 1) / 10, 1);
-        const green  = Math.round(4 - 2 * t);              // 4 → 2
-        const blue   = Math.round(4 - 2 * t);              // 4 → 2
-        const orange = Math.max(1, Math.round(2 - t));     // 2 → 1
-        const red    = 20 - green - blue - orange;
-        return { red, blue, green, orange };
-    }
-
-    // Cooldown entre naranjas: menor a bajo nivel, mayor a alto.
-    _orangeCooldownDuration() {
-        return 10 + (this.difficulty.nivel - 1) * 2;
+        const green  = Math.round(4 - 2 * t);   // 4 → 2
+        const blue   = Math.round(4 - 2 * t);   // 4 → 2
+        const orange = 20 - green - blue;        // 12 → 16
+        return { blue, green, orange };
     }
 
     _pickType() {
         const w = this._spawnWeights();
-        if (this._orangeCooldown > 0) w.orange = 0;
         const pool = [];
         for (const [type, count] of Object.entries(w)) {
             for (let i = 0; i < count; i++) pool.push(type);
@@ -55,16 +46,11 @@ export class BallManager {
     }
 
     update(delta, playerPos) {
-        this._orangeCooldown = Math.max(0, this._orangeCooldown - delta);
         const rate = this.difficulty.spawnRate();
         this._spawnTimer += delta;
         if (this._spawnTimer >= rate) {
             this._spawnTimer = 0;
-            const type = this._pickType();
-            if (type === 'orange') {
-                this._orangeCooldown = this._orangeCooldownDuration();
-            }
-            this.spawn(type, playerPos);
+            this.spawn(this._pickType(), playerPos);
         }
 
         for (let i = this.balls.length - 1; i >= 0; i--) {

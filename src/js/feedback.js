@@ -10,7 +10,7 @@ const COLORS = {
     orange_points: 0xffdd33,
     orange_slow:   0xaa55ff,
 };
-const ORANGE_MIX = 0xff8800;
+const ORANGE_MIX = 0xff2222;  // las naranjas visualmente son rojas
 
 function hexToRGB(hex) {
     return { r: (hex >> 16) & 0xff, g: (hex >> 8) & 0xff, b: hex & 0xff };

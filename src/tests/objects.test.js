@@ -49,29 +49,29 @@ function makeManager(nivel = 1) {
 }
 
 describe('BallManager — pesos de spawn', () => {
-    it('nivel 1: 4 verdes, 4 azules, 2 naranjas de 20', () => {
+    it('nivel 1: 4 verdes, 4 azules, 12 naranjas de 20 (sin rojas)', () => {
         const m = makeManager(1);
         const w = m._spawnWeights();
         expect(w.green).toBe(4);
         expect(w.blue).toBe(4);
-        expect(w.orange).toBe(2);
-        expect(w.red + w.blue + w.green + w.orange).toBe(20);
+        expect(w.orange).toBe(12);
+        expect(w.red).toBeUndefined();
     });
 
-    it('nivel 11+: 2 verdes, 2 azules, 1 naranja de 20', () => {
+    it('nivel 11+: 2 verdes, 2 azules, 16 naranjas de 20', () => {
         const m = makeManager(11);
         const w = m._spawnWeights();
         expect(w.green).toBe(2);
         expect(w.blue).toBe(2);
-        expect(w.orange).toBe(1);
-        expect(w.red + w.blue + w.green + w.orange).toBe(20);
+        expect(w.orange).toBe(16);
     });
 
     it('los pesos siempre suman 20', () => {
         for (const nivel of [1, 3, 5, 7, 10, 15]) {
             const m = makeManager(nivel);
             const w = m._spawnWeights();
-            expect(w.red + w.blue + w.green + w.orange).toBe(20);
+            const sum = Object.values(w).reduce((a, b) => a + b, 0);
+            expect(sum).toBe(20);
         }
     });
 
@@ -82,71 +82,19 @@ describe('BallManager — pesos de spawn', () => {
         expect(w11.blue).toBeLessThanOrEqual(w1.blue);
     });
 
-    it('naranjas disminuyen al subir el nivel', () => {
+    it('naranjas aumentan al subir el nivel (toman el lugar de las rojas)', () => {
         const w1  = makeManager(1)._spawnWeights();
         const w11 = makeManager(11)._spawnWeights();
-        expect(w11.orange).toBeLessThanOrEqual(w1.orange);
+        expect(w11.orange).toBeGreaterThanOrEqual(w1.orange);
     });
 
-    it('_pickType devuelve un tipo válido', () => {
+    it('_pickType nunca devuelve red (las rojas se eliminaron del juego)', () => {
         const m     = makeManager(1);
-        const tipos = new Set();
-        for (let i = 0; i < 100; i++) tipos.add(m._pickType());
-        for (const t of tipos) {
-            expect(['red', 'blue', 'green', 'orange']).toContain(t);
-        }
-    });
-
-    it('mientras el cooldown está activo no genera naranja', () => {
-        const m = makeManager(1);
-        m._orangeCooldown = 5;
         const tipos = Array.from({ length: 200 }, () => m._pickType());
-        expect(tipos).not.toContain('orange');
-    });
-});
-
-describe('BallManager — naranja: cooldown en update()', () => {
-    it('activa el cooldown cuando sale una naranja', () => {
-        const m = makeManager(1);
-        m._pickType   = () => 'orange';   // forzar naranja
-        m._spawnTimer = 99;                // forzar spawn
-        expect(m._orangeCooldown).toBe(0);
-        m.update(0, { x: 0, y: 1.6, z: 0 });
-        expect(m._orangeCooldown).toBeGreaterThan(0);
-    });
-
-    it('no activa el cooldown si sale otro tipo', () => {
-        const m = makeManager(1);
-        m._pickType   = () => 'red';
-        m._spawnTimer = 99;
-        m.update(0, { x: 0, y: 1.6, z: 0 });
-        expect(m._orangeCooldown).toBe(0);
-    });
-
-    it('decrementa el cooldown con el delta', () => {
-        const m = makeManager(1);
-        m._orangeCooldown = 5;
-        m.update(0.1, { x: 0, y: 1.6, z: 0 });
-        expect(m._orangeCooldown).toBeCloseTo(4.9, 5);
-    });
-
-    it('el cooldown no baja de 0', () => {
-        const m = makeManager(1);
-        m._orangeCooldown = 0.05;
-        m.update(0.5, { x: 0, y: 1.6, z: 0 });
-        expect(m._orangeCooldown).toBe(0);
-    });
-
-    it('duración del cooldown es mayor a nivel más alto', () => {
-        const low  = makeManager(1);
-        const high = makeManager(10);
-        expect(high._orangeCooldownDuration())
-            .toBeGreaterThan(low._orangeCooldownDuration());
-    });
-
-    it('duración base en nivel 1 es de 10 segundos', () => {
-        const m = makeManager(1);
-        expect(m._orangeCooldownDuration()).toBe(10);
+        expect(tipos).not.toContain('red');
+        for (const t of tipos) {
+            expect(['blue', 'green', 'orange']).toContain(t);
+        }
     });
 });
 

@@ -178,19 +178,20 @@ describe('PlayerFeedback — subtipos naranja mezclados', () => {
         expect(_gradStops[1].offset).toBe(0.4);
     });
 
-    it('orange_heal tiene el tinte naranja (255,136,0) en el anillo intermedio', () => {
+    it('orange_heal tiene el tinte rojo (255,34,34) en el anillo intermedio', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
         fb.spawn('orange_heal', pos);
-        expect(_gradStops[1].color).toMatch(/255,\s*136,\s*0/);
+        // ORANGE_MIX ahora es 0xff2222 (las naranjas son visualmente rojas).
+        expect(_gradStops[1].color).toMatch(/255,\s*34,\s*34/);
     });
 
-    it('tipo base (red) no contiene el tinte naranja', () => {
+    it('tipo base (blue) no contiene el tinte rojo del mix de naranjas', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
-        fb.spawn('red', pos);
+        fb.spawn('blue', pos);
         for (const stop of _gradStops) {
-            expect(stop.color).not.toMatch(/255,\s*136,\s*0/);
+            expect(stop.color).not.toMatch(/255,\s*34,\s*34/);
         }
     });
 
