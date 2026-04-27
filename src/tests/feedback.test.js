@@ -205,3 +205,40 @@ describe('PlayerFeedback — subtipos naranja mezclados', () => {
         expect(baseColors.size).toBe(4);
     });
 });
+
+describe('PlayerFeedback — textPos billboard fijo', () => {
+    it('si se pasa textPos, el sprite de texto se coloca ahí en vez de encima del impacto', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        const billboard = { x: 1.5, y: 2.4, z: -4.0 };
+        fb.spawn('red', pos, '♥ 3', billboard);
+        const sprite = fb._effects[0].text;
+        expect(sprite.position.x).toBe(1.5);
+        expect(sprite.position.y).toBe(2.4);
+        expect(sprite.position.z).toBe(-4.0);
+    });
+
+    it('sin textPos, el sprite de texto va encima del impacto (hitPos.y + 0.35)', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        const hp    = { x: 0, y: 1.6, z: 0, copy() {} };
+        fb.spawn('red', hp, '♥ 3');
+        const sprite = fb._effects[0].text;
+        expect(sprite.position.x).toBe(0);
+        expect(sprite.position.y).toBeCloseTo(1.95, 5);
+        expect(sprite.position.z).toBe(0);
+    });
+
+    it('el halo se queda en hitPos aunque haya textPos (no le afecta)', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        const hp    = { x: 0.7, y: 1.2, z: -2, copy(v) { v.x = this.x; v.y = this.y; v.z = this.z; } };
+        const billboard = { x: 1.5, y: 2.4, z: -4.0 };
+        fb.spawn('red', hp, '♥ 3', billboard);
+        const halo = fb._effects[0].halo;
+        // En el mock de sprite, halo.position.copy() escribe x/y/z desde hp.
+        expect(halo.position.x).toBe(0.7);
+        expect(halo.position.y).toBe(1.2);
+        expect(halo.position.z).toBe(-2);
+    });
+});

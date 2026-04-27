@@ -6,6 +6,9 @@ const _head = new THREE.Vector3();
 const BALL_R       = 0.15;
 const CTRL_R       = 0.08;
 const HEAD_R       = 0.18;
+// La verde necesita un radio más generoso para que el agarre con gatillo
+// sea fácil de provocar — golpe directo es de 0.23, agarre 0.35.
+const GREEN_GRAB_R = BALL_R + CTRL_R + 0.12;
 
 export class CollisionSystem {
     constructor(player, ballManager) {
@@ -47,10 +50,12 @@ export class CollisionSystem {
                 }
             } else if (ball.type === 'green') {
                 if (ball.grabbed) continue;
-                if (hit1 && held1) {
+                const gh1 = p1.distanceTo(bp) < GREEN_GRAB_R;
+                const gh2 = p2.distanceTo(bp) < GREEN_GRAB_R;
+                if (gh1 && held1) {
                     ball.grabbed = true;
                     if (this.onGreenGrabbed) this.onGreenGrabbed(ball, 1);
-                } else if (hit2 && held2) {
+                } else if (gh2 && held2) {
                     ball.grabbed = true;
                     if (this.onGreenGrabbed) this.onGreenGrabbed(ball, 2);
                 }

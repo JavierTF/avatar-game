@@ -28,6 +28,16 @@ let _yaw = 0, _pitch = 0;
 const _fwd = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
 
+// Posición fija (en mundo) donde aparecen las métricas de feedback:
+// al frente, lejos, algo arriba, un poco a la derecha de donde vienen las bolas.
+function _metricBillboard() {
+    return {
+        x: _camPos.x + 1.5 + (Math.random() - 0.5) * 0.4,
+        y: 2.4,
+        z: _camPos.z - 4.0,
+    };
+}
+
 async function loadConfig() {
     try {
         const r = await fetch('/config.json');
@@ -166,14 +176,14 @@ function startGame() {
     collision.onRedHit = (hitPos) => {
         player.hit();
         metrics.ballHit('red');
-        feedback.spawn('red', hitPos, `♥ ${player.vida}`);
+        feedback.spawn('red', hitPos, `♥ ${player.vida}`, _metricBillboard());
         if (!player.vivo) endGame();
     };
 
     collision.onBlueHit = (hitPos) => {
         player.hitBlue();
         metrics.ballHit('blue');
-        feedback.spawn('blue', hitPos, `♦ ${Math.round(player.mana)}`);
+        feedback.spawn('blue', hitPos, `♦ ${Math.round(player.mana)}`, _metricBillboard());
     };
 
     collision.onGreenGrabbed = (ball, ctrl) => {
@@ -189,7 +199,7 @@ function startGame() {
         if (effect === 'mana')   label = `♦ ${Math.round(player.mana)}`;
         if (effect === 'points') label = `+100`;
         if (effect === 'slow')   label = `⏱ slow`;
-        feedback.spawn('orange_' + effect, hitPos, label);
+        feedback.spawn('orange_' + effect, hitPos, label, _metricBillboard());
     };
 
     running = true;
@@ -248,7 +258,11 @@ function _activateGreen(ball, ctrl) {
     if (ctrlPos.y >= headY - 0.15) {
         player.heal();
         metrics.ballHit('green');
-        feedback.spawn('green', hitPos, `♥ ${player.vida}`);
+        // En verde, halo y texto van ambos al billboard frontal — la bola
+        // termina en la mano del jugador (sobre la cabeza), y un destello ahí
+        // queda demasiado pegado a la cara.
+        const bb = _metricBillboard();
+        feedback.spawn('green', bb, `♥ ${player.vida}`, bb);
     }
     balls.remove(ball);
 }

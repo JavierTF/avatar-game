@@ -208,7 +208,7 @@ export class BallManager {
 
     // Level-1 grab hint: bright emissive glow when controller is in grab range
     updateGreenHints(nivel, p1, p2) {
-        const GRAB_R = 0.23; // BALL_R + CTRL_R from collision.js
+        const GRAB_R = 0.35; // mismo radio generoso que el agarre en collision.js
         for (const b of this.balls) {
             if (b.type !== 'green' || b.grabbed) continue;
             const near = nivel === 1 && (

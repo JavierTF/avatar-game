@@ -70,7 +70,10 @@ export class PlayerFeedback {
     }
 
     // `hitPos` es la última posición en la que el jugador vio la bola.
-    spawn(type, hitPos, text = '') {
+    // `textPos` (opcional) coloca el sprite de texto en un punto fijo —
+    // útil para mostrar la métrica en un sitio visible aunque la bola haya
+    // golpeado al jugador en la cara. Si es null, va justo encima del impacto.
+    spawn(type, hitPos, text = '', textPos = null) {
         const color = COLORS[type] ?? 0xffffff;
         const mix   = type.startsWith('orange_') ? ORANGE_MIX : null;
 
@@ -81,7 +84,8 @@ export class PlayerFeedback {
         let textSprite = null;
         if (text) {
             textSprite = makeTextSprite(text, color);
-            textSprite.position.set(hitPos.x, hitPos.y + 0.35, hitPos.z);
+            const tp = textPos || { x: hitPos.x, y: hitPos.y + 0.35, z: hitPos.z };
+            textSprite.position.set(tp.x, tp.y, tp.z);
             this.scene.add(textSprite);
         }
 
