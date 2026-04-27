@@ -278,26 +278,27 @@ function _tryGrabGreen(ctrl, idx) {
     }
 }
 
-const FLOOR_RELEASE_Y = 0.30;  // mando a 30cm o menos del suelo → coloca ladrillo
+const WALL_MAX_Y         = 1.50;  // alto máximo donde se puede soltar la bola
+const WALL_MIN_FRONT_DIST = 0.50;  // mínima distancia frontal al jugador
 
 function _activateGreen(ball, ctrl) {
     const ctrlPos = new THREE.Vector3();
     ctrl.getWorldPosition(ctrlPos);
 
-    if (ctrlPos.y > FLOOR_RELEASE_Y) {
-        // Soltada en el aire: se descarta sin formar muro.
+    const frontDist = _camPos.z - ctrlPos.z;  // positivo = delante del jugador
+    const tooHigh   = ctrlPos.y > WALL_MAX_Y;
+    const tooClose  = frontDist < WALL_MIN_FRONT_DIST;
+
+    if (tooHigh || tooClose) {
         balls.remove(ball);
         return;
     }
 
-    // Mando cerca del suelo: la bola se queda como ladrillo del muro,
-    // colocada automáticamente en la siguiente ranura de la grilla 5×N.
-    const slot = balls.nextBrickSlot(_camPos);
     ball._wall   = true;
     ball.grabbed = false;
     ball.ctrlPos = null;
     ball.velocity.set(0, 0, 0);
-    ball.mesh.position.set(slot.x, slot.y, slot.z);
+    ball.mesh.position.copy(ctrlPos);
     metrics.ballHit('green');
     sound.life();
 }

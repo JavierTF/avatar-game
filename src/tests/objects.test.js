@@ -365,61 +365,22 @@ describe('BallManager — muro de verdes', () => {
     });
 });
 
-describe('BallManager — auto-layout del muro de ladrillos', () => {
-    it('nextBrickSlot devuelve posiciones secuenciales en la misma fila', () => {
+describe('BallManager — destrucción del muro', () => {
+    it('al destruirse el muro, todos los ladrillos verdes se eliminan', () => {
         const m = makeManager(1);
         const player = { x: 0, y: 1.6, z: 0 };
-        const s0 = m.nextBrickSlot(player);
-        const s1 = m.nextBrickSlot(player);
-        // misma fila → misma Y, X creciente
-        expect(s0.y).toBe(s1.y);
-        expect(s1.x).toBeGreaterThan(s0.x);
-    });
 
-    it('al llenar 5 ladrillos en una fila, el sexto sube a la fila de arriba', () => {
-        const m = makeManager(1);
-        const player = { x: 0, y: 1.6, z: 0 };
-        let firstY;
-        for (let i = 0; i < 5; i++) {
-            const s = m.nextBrickSlot(player);
-            if (i === 0) firstY = s.y;
-            expect(s.y).toBe(firstY);
-        }
-        const s5 = m.nextBrickSlot(player);
-        expect(s5.y).toBeGreaterThan(firstY);
-    });
+        const w1 = m.spawn('green', player);
+        w1._wall = true;
+        w1.mesh.position.set(0, 0.2, -1.5);
+        const w2 = m.spawn('green', player);
+        w2._wall = true;
+        w2.mesh.position.set(0.3, 0.2, -1.5);
 
-    it('el muro se centra en playerPos.x', () => {
-        const m = makeManager(1);
-        const player = { x: 5, y: 1.6, z: 0 };
-        const xs = [];
-        for (let i = 0; i < 5; i++) xs.push(m.nextBrickSlot(player).x);
-        const avg = xs.reduce((a, b) => a + b, 0) / xs.length;
-        expect(avg).toBeCloseTo(5, 1);
-    });
-
-    it('el Z del slot está delante del jugador (-1.5)', () => {
-        const m = makeManager(1);
-        const s = m.nextBrickSlot({ x: 0, y: 1.6, z: 3 });
-        expect(s.z).toBeCloseTo(1.5, 1);  // 3 - 1.5
-    });
-
-    it('al destruirse el muro, el contador de ladrillos se resetea a 0', () => {
-        const m = makeManager(1);
-        const player = { x: 0, y: 1.6, z: 0 };
-        m.nextBrickSlot(player);
-        m.nextBrickSlot(player);
-        m.nextBrickSlot(player);
-        expect(m._wallBricksPlaced).toBe(3);
-
-        // Coloca un ladrillo real y la naranja que lo destruye
-        const w = m.spawn('green', player);
-        w._wall = true;
-        w.mesh.position.set(0, 0.2, -1.5);
         const o = m.spawn('orange', player);
         o.mesh.position.set(0, 0.2, -1.5);
         m._checkWallCollisions();
 
-        expect(m._wallBricksPlaced).toBe(0);
+        expect(m.balls.filter(b => b._wall).length).toBe(0);
     });
 });
