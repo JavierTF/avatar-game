@@ -185,11 +185,16 @@ export class BallManager {
                 Math.cos(ball._age * f * 0.7 + p) * 1.8 +
                 Math.cos(ball._age * f * 2.3 + p * 0.6) * 0.6
             ) * spd;
-            if (ball.cfg.pattern === 'homing') {
+            const beyondPlayer = ball.mesh.position.z >= playerPos.z;
+            if (ball.cfg.pattern === 'homing' && !beyondPlayer) {
                 _target.set(playerPos.x, playerPos.y, playerPos.z);
                 _dir.subVectors(_target, ball.mesh.position).normalize()
                     .multiplyScalar(spd);
                 ball.velocity.z = _dir.z;
+            } else if (beyondPlayer) {
+                // Una vez detrás del jugador, deja de perseguirlo: empuja Z hacia
+                // adelante para que cumpla la condición behind y se elimine.
+                ball.velocity.z = spd;
             }
         }
         ball.mesh.position.add(ball.velocity);
