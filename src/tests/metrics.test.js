@@ -49,33 +49,6 @@ describe('Metrics — contadores básicos', () => {
     });
 });
 
-describe('Metrics — naranjas por efecto', () => {
-    it('ballHit("orange", sub) incrementa el subcontador', () => {
-        const m = new Metrics();
-        m.ballHit('orange', 'heal');
-        m.ballHit('orange', 'heal');
-        m.ballHit('orange', 'mana');
-        expect(m.naranjasPorEfecto.heal).toBe(2);
-        expect(m.naranjasPorEfecto.mana).toBe(1);
-        expect(m.naranjasPorEfecto.points).toBe(0);
-        expect(m.naranjasPorEfecto.slow).toBe(0);
-    });
-
-    it('ballHit("orange") sin sub no rompe y cuenta el hit total', () => {
-        const m = new Metrics();
-        m.ballHit('orange');
-        expect(m.oranges.hit).toBe(1);
-        expect(m.naranjasPorEfecto.heal).toBe(0);
-    });
-
-    it('subefecto desconocido se ignora silenciosamente', () => {
-        const m = new Metrics();
-        m.ballHit('orange', 'fake-effect');
-        expect(m.oranges.hit).toBe(1);
-        expect(m.naranjasPorEfecto.heal).toBe(0);
-    });
-});
-
 describe('Metrics — racha sin daño', () => {
     it('redEscaped incrementa rachaActual', () => {
         const m = new Metrics();
@@ -122,7 +95,6 @@ describe('Metrics — reset', () => {
         expect(m.rachaMaxSinDaño).toBe(0);
         expect(m.rachaActual).toBe(0);
         expect(m.powers.llama.used).toBe(0);
-        expect(m.naranjasPorEfecto.heal).toBe(0);
     });
 });
 
@@ -130,7 +102,6 @@ describe('Metrics — buildHTML', () => {
     it('devuelve un string que contiene las métricas clave del jugador', () => {
         const m = new Metrics();
         m.ballSpawned('red'); m.ballSpawned('red'); m.ballHit('red');
-        m.ballHit('orange', 'heal');
         m.redEscaped();
         m.powerUsed('viento', 4);
 
@@ -164,7 +135,6 @@ describe('Metrics — buildHTML', () => {
         expect(html).toContain('Alcance máximo');
         // Bolas
         expect(html).toContain('esquivadas');
-        expect(html).toContain('Naranjas por efecto');
         expect(html).toContain('Racha máxima');
         // Poderes
         expect(html).toContain('Mana total consumido');

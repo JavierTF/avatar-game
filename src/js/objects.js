@@ -2,10 +2,9 @@ import * as THREE from 'three';
 import { BOUNDS } from './scene.js';
 
 const COLORS = {
-    red:    0xff2222,
-    blue:   0x2255ff,
-    green:  0x22cc55,
-    orange: 0xff2222,  // visualmente roja: la naranja toma el lugar de la roja
+    red:   0xff2222,
+    blue:  0x2255ff,
+    green: 0x22cc55,
 };
 
 function randomGeo() {
@@ -24,18 +23,18 @@ export class BallManager {
         this.balls      = [];
         this._spawnTimer = 0;
         this.onBallSpawned = null;   // (type) => void
-        this.onRedEscaped  = null;   // () => void (legacy: sin rojas en spawn)
+        this.onRedEscaped  = null;   // () => void
         this.onWallHit     = null;   // (impactPos) => void
     }
 
-    // Pesos de spawn. La naranja (visualmente roja) es menos abundante para
-    // dejar más espacio a azules y verdes en la mezcla.
+    // Pesos de spawn. Las rojas (movimiento caótico + homing) son las más
+    // abundantes a niveles altos para subir la dificultad.
     _spawnWeights() {
         const t = Math.min((this.difficulty.nivel - 1) / 10, 1);
-        const green  = Math.round(4 - 2 * t);   // 4 → 2
-        const blue   = Math.round(4 - 2 * t);   // 4 → 2
-        const orange = Math.round(5 + 3 * t);   // 5 → 8
-        return { blue, green, orange };
+        const green = Math.round(4 - 2 * t);   // 4 → 2
+        const blue  = Math.round(4 - 2 * t);   // 4 → 2
+        const red   = Math.round(5 + 3 * t);   // 5 → 8
+        return { blue, green, red };
     }
 
     _pickType() {
@@ -76,15 +75,15 @@ export class BallManager {
         this._checkWallCollisions();
     }
 
-    // Si una naranja (visualmente roja) toca CUALQUIER bloque del muro verde,
-    // todo el muro se destruye junto con esa bola atacante.
+    // Si una roja toca CUALQUIER bloque del muro verde, todo el muro se
+    // destruye junto con esa bola atacante.
     _checkWallCollisions() {
         const walls = this.balls.filter(b => b._wall);
         if (walls.length === 0) return;
         const HIT_R = 0.40;
         for (let i = this.balls.length - 1; i >= 0; i--) {
             const d = this.balls[i];
-            if (d.type !== 'orange' || d._wall || d._dropped) continue;
+            if (d.type !== 'red' || d._wall || d._dropped) continue;
             for (const w of walls) {
                 if (w.mesh.position.distanceTo(d.mesh.position) < HIT_R) {
                     const impactPos = w.mesh.position.clone();
@@ -112,9 +111,7 @@ export class BallManager {
         const vel = this._velocity(type, cfg, spawnPos, playerPos);
 
         const ball = { mesh, type, velocity: vel, cfg, alive: true, grabbed: false, ctrlPos: null };
-        if (type === 'orange') {
-            const effects = ['heal', 'mana', 'points', 'slow'];
-            ball.effect      = effects[Math.floor(Math.random() * effects.length)];
+        if (type === 'red') {
             ball._age        = 0;
             ball._chaosPhase = Math.random() * Math.PI * 2;
             ball._chaosFreq  = 7 + Math.random() * 6;
@@ -136,14 +133,14 @@ export class BallManager {
 
     _velocity(type, cfg, spawnPos, playerPos) {
         const speed = cfg.speed * this.difficulty.speedMult;
-        if (type === 'orange' && cfg.pattern !== 'straight') {
-            return this._orangeVelocity(cfg, spawnPos, playerPos, speed);
+        if (type === 'red' && cfg.pattern !== 'straight') {
+            return this._chaosVelocity(cfg, spawnPos, playerPos, speed);
         }
         _dir.subVectors(playerPos, spawnPos).normalize().multiplyScalar(speed);
         return _dir.clone();
     }
 
-    _orangeVelocity(cfg, spawnPos, playerPos, speed) {
+    _chaosVelocity(cfg, spawnPos, playerPos, speed) {
         if (cfg.pattern === 'homing') {
             return new THREE.Vector3()
                 .subVectors(playerPos, spawnPos)
@@ -170,9 +167,9 @@ export class BallManager {
             ball.mesh.position.copy(ball.ctrlPos);
             return;
         }
-        // Movimiento LOCO para la naranja: X e Y oscilan con dos ondas
+        // Movimiento LOCO para la roja: X e Y oscilan con dos ondas
         // superpuestas de distinta frecuencia; Z se mantiene o hace homing suave.
-        if (ball.type === 'orange' && !ball._bounced) {
+        if (ball.type === 'red') {
             ball._age += delta;
             const spd = ball.cfg.speed * this.difficulty.speedMult;
             const f   = ball._chaosFreq;

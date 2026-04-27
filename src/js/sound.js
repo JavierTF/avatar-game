@@ -43,7 +43,7 @@ export class SoundFX {
         this._tone(784, 0.18, 'sine', 0.13, 0.08);    // G5
     }
 
-    // Roja (antigua naranja) — "negativo": tono bajo con caída de pitch.
+    // Roja — "negativo": tono bajo con caída de pitch.
     negative() {
         if (!this.ctx) return;
         const t = this.ctx.currentTime;

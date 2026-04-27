@@ -25,7 +25,7 @@ async function loadConfig() {
         const r = await fetch('/config.json');
         return await r.json();
     } catch(_) {
-        return { gestures: {}, balls: { red: {}, blue: {}, green: {}, orange: {} }, profiles: [] };
+        return { gestures: {}, balls: { red: {}, blue: {}, green: {} }, profiles: [] };
     }
 }
 

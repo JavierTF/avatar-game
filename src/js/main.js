@@ -45,7 +45,7 @@ async function loadConfig() {
         const r = await fetch('/config.json');
         return await r.json();
     } catch (_) {
-        return { gestures: {}, balls: { red: {}, blue: {}, green: {}, orange: {} }, profiles: [] };
+        return { gestures: {}, balls: { red: {}, blue: {}, green: {} }, profiles: [] };
     }
 }
 
@@ -182,6 +182,7 @@ function startGame() {
         player.hit();
         metrics.ballHit('red');
         feedback.spawn('red', hitPos, `♥ ${player.vida}`, _metricBillboard());
+        sound.negative();
         if (!player.vivo) endGame();
     };
 
@@ -197,30 +198,7 @@ function startGame() {
         else            grabbedBall2 = ball;
     };
 
-    collision.onOrangeHit = (effect, hitPos) => {
-        metrics.ballHit('orange', effect);
-        applyOrangeEffect(effect);
-        sound.negative();
-        let label = '';
-        if (effect === 'heal')   label = `♥ ${player.vida}`;
-        if (effect === 'mana')   label = `♦ ${Math.round(player.mana)}`;
-        if (effect === 'points') label = `+100`;
-        if (effect === 'slow')   label = `⏱ slow`;
-        feedback.spawn('orange_' + effect, hitPos, label, _metricBillboard());
-    };
-
     running = true;
-}
-
-function applyOrangeEffect(effect) {
-    if (effect === 'heal')   player.heal();
-    if (effect === 'mana')   player.addMana(50);
-    if (effect === 'points') player.puntos += 100;
-    if (effect === 'slow') {
-        const orig = difficulty.speedMult;
-        difficulty.speedMult *= 0.5;
-        setTimeout(() => { difficulty.speedMult = orig; }, 5000);
-    }
 }
 
 function handlePowers(gData) {

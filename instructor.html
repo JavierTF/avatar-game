@@ -98,7 +98,6 @@
         <option value="power_sismico">Poder: Pulso Sísmico</option>
         <option value="power_llama">Poder: Llama Dragón</option>
         <option value="power_viento">Poder: Viento Eterno</option>
-        <option value="orange_interact">Interactuar con bola naranja</option>
       </select>
       <p style="color:#aaa; font-size:0.85rem; margin-bottom:1rem;">
         Pulsa "Iniciar grabación", realiza el gesto con el mando y pulsa "Detener".
@@ -117,7 +116,6 @@
         <option value="red">Roja</option>
         <option value="blue">Azul</option>
         <option value="green">Verde</option>
-        <option value="orange">Naranja</option>
       </select>
 
       <label>Velocidad inicial</label>
@@ -132,21 +130,13 @@
       <input type="range" id="cone-width" min="5" max="160" step="5" value="60" />
       <span id="cone-width-val">60°</span>
 
-      <div id="orange-options" style="display:none;">
-        <label>Patrón de movimiento (naranja)</label>
-        <select id="orange-pattern">
+      <div id="red-options" style="display:none;">
+        <label>Patrón de movimiento (roja)</label>
+        <select id="red-pattern">
           <option value="straight">Recto</option>
           <option value="zigzag">Zigzag</option>
           <option value="homing">Hacia el jugador</option>
           <option value="random">Aleatorio</option>
-        </select>
-
-        <label>Efecto al interactuar</label>
-        <select id="orange-effect">
-          <option value="heal">Restaurar vida (+2)</option>
-          <option value="mana">Restaurar mana (+50%)</option>
-          <option value="slow">Ralentizar bolas (5s)</option>
-          <option value="points">Puntos extra x3</option>
         </select>
       </div>
 

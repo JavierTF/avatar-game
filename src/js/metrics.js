@@ -18,8 +18,6 @@ export class Metrics {
         this.reds      = { hit: 0, total: 0 };
         this.blues     = { hit: 0, total: 0 };
         this.greens    = { hit: 0, total: 0 };
-        this.oranges   = { hit: 0, total: 0 };
-        this.naranjasPorEfecto = { heal: 0, mana: 0, points: 0, slow: 0 };
         this.powers    = {
             escudo:  { used: 0, killed: 0 },
             sismico: { used: 0, killed: 0 },
@@ -34,12 +32,9 @@ export class Metrics {
     }
 
     ballSpawned(type)         { if (this[type + 's']) this[type + 's'].total++; }
-    ballHit(type, sub) {
+    ballHit(type) {
         if (this[type + 's']) this[type + 's'].hit++;
         if (type === 'red') this.rachaActual = 0;
-        if (type === 'orange' && sub && this.naranjasPorEfecto[sub] !== undefined) {
-            this.naranjasPorEfecto[sub]++;
-        }
     }
     redEscaped() {
         this.rachaActual++;
@@ -135,12 +130,6 @@ export class Metrics {
               <td>${this.greens.hit}</td><td>${this.greens.total}</td>
               <td>${Math.round(pctG * 100)}%</td><td>${evalLabel(pctG)}</td>
             </tr>
-            <tr>
-              <td>Naranjas (total)</td>
-              <td>${this.oranges.hit}</td><td>${this.oranges.total}</td>
-              <td>—</td><td>—</td>
-            </tr>
-            <tr><td colspan="5">Naranjas por efecto: ♥ ${this.naranjasPorEfecto.heal} &nbsp;·&nbsp; ♦ ${this.naranjasPorEfecto.mana} &nbsp;·&nbsp; + ${this.naranjasPorEfecto.points} &nbsp;·&nbsp; ⏱ ${this.naranjasPorEfecto.slow}</td></tr>
             <tr><td colspan="5">Racha máxima de rojas esquivadas sin recibir daño: <strong>${this.rachaMaxSinDaño}</strong></td></tr>
           </table>
 

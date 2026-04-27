@@ -41,7 +41,7 @@ function makeScene()  { return { add(){}, remove(){} }; }
 function makePlayer() { return { vida:5, maxVida:5 }; }
 
 function makeGreenBallAt(x, y, z) {
-    const config = { balls: { red:{speed:0.015}, blue:{speed:0.012}, green:{speed:0.010}, orange:{speed:0.008,pattern:'straight'} } };
+    const config = { balls: { red:{speed:0.008,pattern:'homing'}, blue:{speed:0.012}, green:{speed:0.010} } };
     const bm = new BallManager(makeScene(), config, new Difficulty(1));
     const playerPos = { x:0, y:1.6, z:0 };
     const ball = bm.spawn('green', playerPos);

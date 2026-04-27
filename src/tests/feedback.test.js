@@ -150,60 +150,17 @@ describe('PlayerFeedback — update / ciclo de vida', () => {
     });
 });
 
-describe('PlayerFeedback — subtipos naranja mezclados', () => {
-    it('acepta los 4 subtipos sin lanzar', () => {
+describe('PlayerFeedback — gradiente del halo', () => {
+    it('todos los tipos usan gradiente simple con ancla intermedia en 0.4', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
-        expect(() => fb.spawn('orange_heal',   pos, '♥ 4')).not.toThrow();
-        expect(() => fb.spawn('orange_mana',   pos, '♦ 42')).not.toThrow();
-        expect(() => fb.spawn('orange_points', pos, '+100')).not.toThrow();
-        expect(() => fb.spawn('orange_slow',   pos, '⏱ slow')).not.toThrow();
-    });
-
-    it('orange_X usa gradiente mezclado con ancla intermedia en 0.5', () => {
-        const scene = makeScene();
-        const fb    = new PlayerFeedback(scene);
-        fb.spawn('orange_heal', pos);
-        expect(_gradStops).toHaveLength(3);
-        expect(_gradStops[0].offset).toBe(0.0);
-        expect(_gradStops[1].offset).toBe(0.5);
-        expect(_gradStops[2].offset).toBe(1.0);
-    });
-
-    it('tipo base (red) usa gradiente simple con ancla intermedia en 0.4', () => {
-        const scene = makeScene();
-        const fb    = new PlayerFeedback(scene);
-        fb.spawn('red', pos);
-        expect(_gradStops).toHaveLength(3);
-        expect(_gradStops[1].offset).toBe(0.4);
-    });
-
-    it('orange_heal tiene el tinte rojo (255,34,34) en el anillo intermedio', () => {
-        const scene = makeScene();
-        const fb    = new PlayerFeedback(scene);
-        fb.spawn('orange_heal', pos);
-        // ORANGE_MIX ahora es 0xff2222 (las naranjas son visualmente rojas).
-        expect(_gradStops[1].color).toMatch(/255,\s*34,\s*34/);
-    });
-
-    it('tipo base (blue) no contiene el tinte rojo del mix de naranjas', () => {
-        const scene = makeScene();
-        const fb    = new PlayerFeedback(scene);
-        fb.spawn('blue', pos);
-        for (const stop of _gradStops) {
-            expect(stop.color).not.toMatch(/255,\s*34,\s*34/);
-        }
-    });
-
-    it('los 4 subtipos naranja están registrados con color base distinto', () => {
-        const scene = makeScene();
-        const fb    = new PlayerFeedback(scene);
-        const baseColors = new Set();
-        for (const type of ['orange_heal', 'orange_mana', 'orange_points', 'orange_slow']) {
+        for (const type of ['red', 'blue', 'green']) {
             fb.spawn(type, pos);
-            baseColors.add(_gradStops[0].color); // stop central usa el color base
+            expect(_gradStops).toHaveLength(3);
+            expect(_gradStops[0].offset).toBe(0.0);
+            expect(_gradStops[1].offset).toBe(0.4);
+            expect(_gradStops[2].offset).toBe(1.0);
         }
-        expect(baseColors.size).toBe(4);
     });
 });
 

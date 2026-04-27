@@ -12,7 +12,7 @@ export class BallEditor {
         const coneAVal  = document.getElementById('cone-angle-val');
         const coneWEl   = document.getElementById('cone-width');
         const coneWVal  = document.getElementById('cone-width-val');
-        const orangeOpts= document.getElementById('orange-options');
+        const redOpts   = document.getElementById('red-options');
         const saveBtn   = document.getElementById('btn-save-ball');
 
         const loadType = (type) => {
@@ -23,10 +23,10 @@ export class BallEditor {
             speedVal.textContent = speedEl.value;
             coneAVal.textContent = coneAEl.value + '°';
             coneWVal.textContent = coneWEl.value + '°';
-            orangeOpts.style.display = type === 'orange' ? 'block' : 'none';
-            if (type === 'orange') {
-                document.getElementById('orange-pattern').value = cfg.pattern || 'homing';
-                document.getElementById('orange-effect').value  = cfg.effect  || 'heal';
+            if (redOpts) redOpts.style.display = type === 'red' ? 'block' : 'none';
+            if (type === 'red') {
+                const patEl = document.getElementById('red-pattern');
+                if (patEl) patEl.value = cfg.pattern || 'homing';
             }
         };
 
@@ -47,9 +47,9 @@ export class BallEditor {
             this.config.balls[type].speed     = parseFloat(speedEl.value);
             this.config.balls[type].coneAngle = parseInt(coneAEl.value);
             this.config.balls[type].coneWidth = parseInt(coneWEl.value);
-            if (type === 'orange') {
-                this.config.balls[type].pattern = document.getElementById('orange-pattern').value;
-                this.config.balls[type].effect  = document.getElementById('orange-effect').value;
+            if (type === 'red') {
+                const patEl = document.getElementById('red-pattern');
+                if (patEl) this.config.balls[type].pattern = patEl.value;
             }
             this.save(this.config);
             const st = document.getElementById('ball-status');

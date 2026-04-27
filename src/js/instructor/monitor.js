@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const BALL_COLORS = { red: 0xff2222, blue: 0x2255ff, green: 0x22cc55, orange: 0xff8800 };
+const BALL_COLORS = { red: 0xff2222, blue: 0x2255ff, green: 0x22cc55 };
 const _ballGeo = new THREE.SphereGeometry(0.15, 8, 8);
 const _ctrlGeo = new THREE.SphereGeometry(0.06, 6, 6);
 
