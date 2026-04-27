@@ -26,6 +26,30 @@ export class BallManager {
         this.onBallSpawned = null;   // (type) => void
         this.onRedEscaped  = null;   // () => void (legacy: sin rojas en spawn)
         this.onWallHit     = null;   // (impactPos) => void
+        this._wallBricksPlaced = 0;  // contador para el auto-layout del muro
+    }
+
+    // Devuelve la posición del próximo ladrillo del muro: las bolas se
+    // amontonan automáticamente en una grilla 5 columnas × N filas frente al
+    // jugador, como una pared de ladrillos que crece de abajo hacia arriba.
+    nextBrickSlot(playerPos) {
+        const SLOT_W  = 0.32;     // ancho de cada ladrillo
+        const SLOT_H  = 0.30;     // alto entre filas
+        const PER_ROW = 5;         // ladrillos por fila
+        const baseY   = 0.18;     // primera fila pegada al suelo
+        const baseZ   = playerPos.z - 1.5;
+        const baseX   = playerPos.x - ((PER_ROW - 1) * SLOT_W) / 2;
+
+        const n   = this._wallBricksPlaced;
+        const row = Math.floor(n / PER_ROW);
+        const col = n % PER_ROW;
+        this._wallBricksPlaced++;
+
+        return {
+            x: baseX + col * SLOT_W,
+            y: baseY + row * SLOT_H,
+            z: baseZ,
+        };
     }
 
     // Pesos de spawn. La naranja (visualmente roja) es menos abundante para
@@ -91,6 +115,7 @@ export class BallManager {
                     if (this.onWallHit) this.onWallHit(impactPos);
                     for (const wb of walls) this.remove(wb);
                     this.remove(d);
+                    this._wallBricksPlaced = 0;  // muro destruido: reinicia layout
                     return;
                 }
             }

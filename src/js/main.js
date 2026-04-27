@@ -276,17 +276,26 @@ function _tryGrabGreen(ctrl, idx) {
     }
 }
 
+const FLOOR_RELEASE_Y = 0.30;  // mando a 30cm o menos del suelo → coloca ladrillo
+
 function _activateGreen(ball, ctrl) {
     const ctrlPos = new THREE.Vector3();
     ctrl.getWorldPosition(ctrlPos);
-    // La bola se queda en el suelo justo donde estaba el mando al soltar.
-    // El jugador se agacha y suelta ahí mismo el gatillo → bloque colocado.
-    // Si no se agacha lo suficiente, igual se posa en el piso (y forzada a 0.2).
+
+    if (ctrlPos.y > FLOOR_RELEASE_Y) {
+        // Soltada en el aire: se descarta sin formar muro.
+        balls.remove(ball);
+        return;
+    }
+
+    // Mando cerca del suelo: la bola se queda como ladrillo del muro,
+    // colocada automáticamente en la siguiente ranura de la grilla 5×N.
+    const slot = balls.nextBrickSlot(_camPos);
     ball._wall   = true;
     ball.grabbed = false;
     ball.ctrlPos = null;
     ball.velocity.set(0, 0, 0);
-    ball.mesh.position.set(ctrlPos.x, 0.2, ctrlPos.z);
+    ball.mesh.position.set(slot.x, slot.y, slot.z);
     metrics.ballHit('green');
     sound.life();
 }
