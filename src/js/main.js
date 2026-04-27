@@ -12,10 +12,12 @@ import { HUD }         from './hud.js';
 import { Metrics }     from './metrics.js';
 import { PlayerFeedback } from './feedback.js';
 import { ControllerTrail } from './trail.js';
+import { SoundFX } from './sound.js';
 
 let renderer, scene, camera;
 let c1, c2, cg1, cg2;
 let player, difficulty, balls, gestures, powers, collision, hud, metrics, feedback, trail;
+const sound = new SoundFX();
 let config;
 let clock;
 let running = false;
@@ -127,11 +129,13 @@ async function init() {
     });
 
     document.getElementById('btn-vr').addEventListener('click', () => {
+        sound.init();
         document.body.appendChild(VRButton.createButton(renderer));
         startGame();
     });
 
     document.getElementById('btn-desktop').addEventListener('click', () => {
+        sound.init();
         isDesktop = true;
         startGame();
         renderer.setAnimationLoop(renderLoop);
@@ -184,6 +188,7 @@ function startGame() {
         player.hitBlue();
         metrics.ballHit('blue');
         feedback.spawn('blue', hitPos, `♦ ${Math.round(player.mana)}`, _metricBillboard());
+        sound.magic();
     };
 
     collision.onGreenGrabbed = (ball, ctrl) => {
@@ -194,6 +199,7 @@ function startGame() {
     collision.onOrangeHit = (effect, hitPos) => {
         metrics.ballHit('orange', effect);
         applyOrangeEffect(effect);
+        sound.negative();
         let label = '';
         if (effect === 'heal')   label = `♥ ${player.vida}`;
         if (effect === 'mana')   label = `♦ ${Math.round(player.mana)}`;
@@ -263,6 +269,7 @@ function _activateGreen(ball, ctrl) {
         // queda demasiado pegado a la cara.
         const bb = _metricBillboard();
         feedback.spawn('green', bb, `♥ ${player.vida}`, bb);
+        sound.life();
     }
     balls.remove(ball);
 }
