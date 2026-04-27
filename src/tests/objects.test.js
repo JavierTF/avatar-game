@@ -10,6 +10,15 @@ vi.mock('three', () => ({
                 copy(v) { if (v) { this.x = v.x; this.y = v.y; this.z = v.z; } return this; },
                 set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; },
                 add(v) { this.x += v.x; this.y += v.y; this.z += v.z; return this; },
+                distanceTo(v) { return Math.hypot(this.x - v.x, this.y - v.y, this.z - v.z); },
+                clone() {
+                    const self = this;
+                    return {
+                        x: self.x, y: self.y, z: self.z,
+                        copy: self.copy, set: self.set, add: self.add,
+                        distanceTo: self.distanceTo, clone: self.clone,
+                    };
+                },
             };
             this.castShadow = false;
             this.rotation = { x: 0, y: 0, z: 0 };
@@ -49,29 +58,29 @@ function makeManager(nivel = 1) {
 }
 
 describe('BallManager — pesos de spawn', () => {
-    it('nivel 1: 4 verdes, 4 azules, 12 naranjas de 20 (sin rojas)', () => {
+    it('nivel 1: 4 verdes, 4 azules, 5 naranjas (sin rojas)', () => {
         const m = makeManager(1);
         const w = m._spawnWeights();
         expect(w.green).toBe(4);
         expect(w.blue).toBe(4);
-        expect(w.orange).toBe(12);
+        expect(w.orange).toBe(5);
         expect(w.red).toBeUndefined();
     });
 
-    it('nivel 11+: 2 verdes, 2 azules, 16 naranjas de 20', () => {
+    it('nivel 11+: 2 verdes, 2 azules, 8 naranjas', () => {
         const m = makeManager(11);
         const w = m._spawnWeights();
         expect(w.green).toBe(2);
         expect(w.blue).toBe(2);
-        expect(w.orange).toBe(16);
+        expect(w.orange).toBe(8);
     });
 
-    it('los pesos siempre suman 20', () => {
+    it('todos los pesos son no negativos', () => {
         for (const nivel of [1, 3, 5, 7, 10, 15]) {
-            const m = makeManager(nivel);
-            const w = m._spawnWeights();
-            const sum = Object.values(w).reduce((a, b) => a + b, 0);
-            expect(sum).toBe(20);
+            const w = makeManager(nivel)._spawnWeights();
+            for (const v of Object.values(w)) {
+                expect(v).toBeGreaterThanOrEqual(0);
+            }
         }
     });
 
@@ -238,5 +247,120 @@ describe('BallManager — callbacks de métricas', () => {
         }
         m.update(0.016, { x: 0, y: 1.6, z: 0 });
         expect(escaped).toBe(0);
+    });
+});
+
+describe('BallManager — bolas pasan detrás del jugador', () => {
+    it('una bola con z > playerZ + 0.5 se elimina', () => {
+        const m = makeManager(1);
+        const b = m.spawn('blue', { x: 0, y: 1.6, z: 0 });
+        b.mesh.position.x = 0;
+        b.mesh.position.y = 1.0;
+        b.mesh.position.z = 1.0;        // detrás del jugador (z=0)
+        b.velocity.set(0, 0, 0);
+        m.update(0.016, { x: 0, y: 1.6, z: 0 });
+        expect(m.balls.length).toBe(0);
+    });
+
+    it('una bola justo delante del jugador NO se elimina', () => {
+        const m = makeManager(1);
+        const b = m.spawn('blue', { x: 0, y: 1.6, z: 0 });
+        b.mesh.position.x = 0;
+        b.mesh.position.y = 1.0;
+        b.mesh.position.z = -2.0;       // delante del jugador
+        b.velocity.set(0, 0, 0);
+        m.update(0.016, { x: 0, y: 1.6, z: 0 });
+        expect(m.balls.length).toBe(1);
+    });
+
+    it('una bola agarrada NO se elimina aunque esté detrás', () => {
+        const m = makeManager(1);
+        const b = m.spawn('green', { x: 0, y: 1.6, z: 0 });
+        b.grabbed = true;
+        b.mesh.position.x = 0;
+        b.mesh.position.y = 1.0;
+        b.mesh.position.z = 1.5;
+        b.velocity.set(0, 0, 0);
+        m.update(0.016, { x: 0, y: 1.6, z: 0 });
+        expect(m.balls.length).toBe(1);
+    });
+});
+
+describe('BallManager — muro de verdes', () => {
+    it('una bola con _wall=true no se mueve en _moveBall (estática)', () => {
+        const m = makeManager(1);
+        const b = m.spawn('green', { x: 0, y: 1.6, z: 0 });
+        b._wall = true;
+        b.mesh.position.set(0.5, 0.2, -1.5);
+        b.velocity.set(0.1, 0.1, 0.1);  // velocidad cualquiera (debería ignorarse)
+        m.update(0.1, { x: 0, y: 1.6, z: 0 });
+        expect(b.mesh.position.x).toBe(0.5);
+        expect(b.mesh.position.y).toBe(0.2);
+        expect(b.mesh.position.z).toBe(-1.5);
+    });
+
+    it('un muro NO se elimina por la regla de "detrás del jugador"', () => {
+        const m = makeManager(1);
+        const b = m.spawn('green', { x: 0, y: 1.6, z: 0 });
+        b._wall = true;
+        b.mesh.position.set(0, 0.2, 5);  // forzamos z detrás
+        b.velocity.set(0, 0, 0);
+        m.update(0.016, { x: 0, y: 1.6, z: 0 });
+        expect(m.balls.length).toBe(1);
+    });
+
+    it('una naranja tocando el muro destruye TODO el muro y la bola atacante', () => {
+        const m = makeManager(1);
+        const w1 = m.spawn('green', { x: 0, y: 1.6, z: 0 });
+        const w2 = m.spawn('green', { x: 0, y: 1.6, z: 0 });
+        const w3 = m.spawn('green', { x: 0, y: 1.6, z: 0 });
+        w1._wall = true; w1.mesh.position.set(-0.6, 0.2, -1.5);
+        w2._wall = true; w2.mesh.position.set( 0.0, 0.2, -1.5);
+        w3._wall = true; w3.mesh.position.set( 0.6, 0.2, -1.5);
+
+        const o = m.spawn('orange', { x: 0, y: 1.6, z: 0 });
+        o.mesh.position.set(0, 0.2, -1.5);  // colisiona con w2
+        o.velocity.set(0, 0, 0);
+
+        m._checkWallCollisions();
+        // Los 3 bloques del muro + la naranja → todos eliminados
+        expect(m.balls.length).toBe(0);
+    });
+
+    it('onWallHit se dispara con el punto de impacto', () => {
+        const m = makeManager(1);
+        let impactPos = null;
+        m.onWallHit = (p) => { impactPos = p; };
+
+        const w = m.spawn('green', { x: 0, y: 1.6, z: 0 });
+        w._wall = true; w.mesh.position.set(0, 0.2, -1.5);
+        const o = m.spawn('orange', { x: 0, y: 1.6, z: 0 });
+        o.mesh.position.set(0, 0.2, -1.5);
+
+        m._checkWallCollisions();
+        expect(impactPos).not.toBeNull();
+        expect(impactPos.x).toBe(0);
+        expect(impactPos.z).toBe(-1.5);
+    });
+
+    it('una naranja lejos del muro NO lo destruye', () => {
+        const m = makeManager(1);
+        const w = m.spawn('green', { x: 0, y: 1.6, z: 0 });
+        w._wall = true; w.mesh.position.set(0, 0.2, -1.5);
+        const o = m.spawn('orange', { x: 0, y: 1.6, z: 0 });
+        o.mesh.position.set(2, 0.2, -1.5);  // lejos en X
+        m._checkWallCollisions();
+        expect(m.balls.length).toBe(2);
+    });
+
+    it('si no hay muro, _checkWallCollisions no hace nada', () => {
+        const m = makeManager(1);
+        const o = m.spawn('orange', { x: 0, y: 1.6, z: 0 });
+        o.mesh.position.set(0, 0.2, 0);
+        let called = 0;
+        m.onWallHit = () => { called++; };
+        m._checkWallCollisions();
+        expect(called).toBe(0);
+        expect(m.balls.length).toBe(1);
     });
 });

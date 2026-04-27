@@ -176,6 +176,7 @@ function startGame() {
 
     balls.onBallSpawned = (type) => metrics.ballSpawned(type);
     balls.onRedEscaped  = ()     => metrics.redEscaped();
+    balls.onWallHit     = ()     => sound.negative();
 
     collision.onRedHit = (hitPos) => {
         player.hit();
@@ -259,19 +260,15 @@ function handlePowers(gData) {
 function _activateGreen(ball, ctrl) {
     const ctrlPos = new THREE.Vector3();
     ctrl.getWorldPosition(ctrlPos);
-    const headY = _camPos.y;
-    const hitPos = ball.mesh.position.clone();
-    if (ctrlPos.y >= headY - 0.15) {
-        player.heal();
-        metrics.ballHit('green');
-        // En verde, halo y texto van ambos al billboard frontal — la bola
-        // termina en la mano del jugador (sobre la cabeza), y un destello ahí
-        // queda demasiado pegado a la cara.
-        const bb = _metricBillboard();
-        feedback.spawn('green', bb, `♥ ${player.vida}`, bb);
-        sound.life();
-    }
-    balls.remove(ball);
+    // La bola se queda como bloque del muro: en el suelo, delante del jugador.
+    // x = donde estaba el mando al soltar (el jugador "construye" el muro).
+    ball._wall   = true;
+    ball.grabbed = false;
+    ball.ctrlPos = null;
+    ball.velocity.set(0, 0, 0);
+    ball.mesh.position.set(ctrlPos.x, 0.2, _camPos.z - 1.5);
+    metrics.ballHit('green');
+    sound.life();
 }
 
 function endGame() {

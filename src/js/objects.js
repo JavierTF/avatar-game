@@ -25,14 +25,16 @@ export class BallManager {
         this._spawnTimer = 0;
         this.onBallSpawned = null;   // (type) => void
         this.onRedEscaped  = null;   // () => void (legacy: sin rojas en spawn)
+        this.onWallHit     = null;   // (impactPos) => void
     }
 
-    // Pesos de spawn. La naranja toma el lugar de la roja (se elimina del juego).
+    // Pesos de spawn. La naranja (visualmente roja) es menos abundante para
+    // dejar más espacio a azules y verdes en la mezcla.
     _spawnWeights() {
         const t = Math.min((this.difficulty.nivel - 1) / 10, 1);
         const green  = Math.round(4 - 2 * t);   // 4 → 2
         const blue   = Math.round(4 - 2 * t);   // 4 → 2
-        const orange = 20 - green - blue;        // 12 → 16
+        const orange = Math.round(5 + 3 * t);   // 5 → 8
         return { blue, green, orange };
     }
 
@@ -55,14 +57,42 @@ export class BallManager {
 
         for (let i = this.balls.length - 1; i >= 0; i--) {
             const b = this.balls[i];
-            this._moveBall(b, delta, playerPos);
-            if (this._outOfBounds(b.mesh.position)) {
-                // Roja que sale por los límites sin haber sido golpeada / caída:
-                // el jugador la esquivó con éxito.
+            // Las bolas con _wall (muro verde) son estáticas — no se mueven.
+            if (!b._wall) {
+                this._moveBall(b, delta, playerPos);
+            }
+            // Bolas que ya pasaron detrás del jugador se eliminan inmediatamente
+            // (excepto las agarradas y las del muro).
+            const behind = !b.grabbed && !b._wall &&
+                           b.mesh.position.z > playerPos.z + 0.5;
+            if (this._outOfBounds(b.mesh.position) || behind) {
                 if (b.type === 'red' && !b._dropped && this.onRedEscaped) {
                     this.onRedEscaped();
                 }
                 this._remove(i);
+            }
+        }
+
+        this._checkWallCollisions();
+    }
+
+    // Si una naranja (visualmente roja) toca CUALQUIER bloque del muro verde,
+    // todo el muro se destruye junto con esa bola atacante.
+    _checkWallCollisions() {
+        const walls = this.balls.filter(b => b._wall);
+        if (walls.length === 0) return;
+        const HIT_R = 0.40;
+        for (let i = this.balls.length - 1; i >= 0; i--) {
+            const d = this.balls[i];
+            if (d.type !== 'orange' || d._wall || d._dropped) continue;
+            for (const w of walls) {
+                if (w.mesh.position.distanceTo(d.mesh.position) < HIT_R) {
+                    const impactPos = w.mesh.position.clone();
+                    if (this.onWallHit) this.onWallHit(impactPos);
+                    for (const wb of walls) this.remove(wb);
+                    this.remove(d);
+                    return;
+                }
             }
         }
     }
