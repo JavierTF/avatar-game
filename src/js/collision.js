@@ -54,9 +54,13 @@ export class CollisionSystem {
                 const gh2 = p2.distanceTo(bp) < GREEN_GRAB_R;
                 if (gh1 && held1) {
                     ball.grabbed = true;
+                    ball.ctrlPos = p1.clone();
+                    ball.mesh.position.copy(p1);
                     if (this.onGreenGrabbed) this.onGreenGrabbed(ball, 1);
                 } else if (gh2 && held2) {
                     ball.grabbed = true;
+                    ball.ctrlPos = p2.clone();
+                    ball.mesh.position.copy(p2);
                     if (this.onGreenGrabbed) this.onGreenGrabbed(ball, 2);
                 }
             } else if (ball.type === 'orange') {

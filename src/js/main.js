@@ -269,6 +269,8 @@ function _tryGrabGreen(ctrl, idx) {
         if (ball.type !== 'green' || ball.grabbed || ball._wall) continue;
         if (cp.distanceTo(ball.mesh.position) < R) {
             ball.grabbed = true;
+            ball.ctrlPos = cp.clone();        // siguiente frame ya tiene ctrlPos
+            ball.mesh.position.copy(cp);      // teleporte instantáneo a la mano
             if (idx === 1) grabbedBall1 = ball;
             else            grabbedBall2 = ball;
             return;
@@ -315,15 +317,19 @@ function renderLoop() {
     difficulty.update(delta);
 
     _camPos.setFromMatrixPosition(camera.matrixWorld);
-    balls.update(delta, _camPos);
 
+    // Posiciones de mandos PRIMERO. Si una bola está agarrada, le asignamos
+    // la posición fresca del mando ANTES de que balls.update llame a _moveBall —
+    // así la bola sigue al mando sin un frame de retraso.
     const gData = gestures.update(delta, c1, c2);
+    if (grabbedBall1) grabbedBall1.ctrlPos = gData.pos1;
+    if (grabbedBall2) grabbedBall2.ctrlPos = gData.pos2;
+
+    balls.update(delta, _camPos);
     handlePowers(gData);
 
     collision.update(c1, c2, camera, held1, held2);
     balls.updateGreenHints(gData.pos1, gData.pos2);
-    if (grabbedBall1) grabbedBall1.ctrlPos = gData.pos1;
-    if (grabbedBall2) grabbedBall2.ctrlPos = gData.pos2;
 
     powers.update(delta);
     feedback.update(delta);
