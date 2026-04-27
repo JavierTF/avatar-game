@@ -88,12 +88,12 @@ async function init() {
     c1.add(ray.clone());
     c2.add(ray.clone());
 
-    c1.addEventListener('selectstart', () => { held1 = true; });
+    c1.addEventListener('selectstart', () => { held1 = true; _tryGrabGreen(c1, 1); });
     c1.addEventListener('selectend',   () => {
         held1 = false;
         if (grabbedBall1) { _activateGreen(grabbedBall1, c1); grabbedBall1 = null; }
     });
-    c2.addEventListener('selectstart', () => { held2 = true; });
+    c2.addEventListener('selectstart', () => { held2 = true; _tryGrabGreen(c2, 2); });
     c2.addEventListener('selectend',   () => {
         held2 = false;
         if (grabbedBall2) { _activateGreen(grabbedBall2, c2); grabbedBall2 = null; }
@@ -257,16 +257,36 @@ function handlePowers(gData) {
     }
 }
 
+// Agarre inmediato al pulsar el gatillo: si hay una verde en rango, la marcamos
+// agarrada en el mismo evento, sin esperar al próximo tick de collision.update.
+// Esto cubre pulsaciones cortas que de otra forma se perderían entre frames.
+function _tryGrabGreen(ctrl, idx) {
+    if (!balls) return;
+    const cp = new THREE.Vector3();
+    ctrl.getWorldPosition(cp);
+    const R = 0.45;
+    for (const ball of balls.balls) {
+        if (ball.type !== 'green' || ball.grabbed || ball._wall) continue;
+        if (cp.distanceTo(ball.mesh.position) < R) {
+            ball.grabbed = true;
+            if (idx === 1) grabbedBall1 = ball;
+            else            grabbedBall2 = ball;
+            return;
+        }
+    }
+}
+
 function _activateGreen(ball, ctrl) {
     const ctrlPos = new THREE.Vector3();
     ctrl.getWorldPosition(ctrlPos);
-    // La bola se queda como bloque del muro: en el suelo, delante del jugador.
-    // x = donde estaba el mando al soltar (el jugador "construye" el muro).
+    // La bola se queda en el suelo justo donde estaba el mando al soltar.
+    // El jugador se agacha y suelta ahí mismo el gatillo → bloque colocado.
+    // Si no se agacha lo suficiente, igual se posa en el piso (y forzada a 0.2).
     ball._wall   = true;
     ball.grabbed = false;
     ball.ctrlPos = null;
     ball.velocity.set(0, 0, 0);
-    ball.mesh.position.set(ctrlPos.x, 0.2, _camPos.z - 1.5);
+    ball.mesh.position.set(ctrlPos.x, 0.2, ctrlPos.z);
     metrics.ballHit('green');
     sound.life();
 }
