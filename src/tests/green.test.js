@@ -311,6 +311,114 @@ describe('Bola verde — sigue al mando exactamente mientras está agarrada', ()
     });
 });
 
+describe('Bola verde — drop como muro tras agarrar', () => {
+    // playerPos a {0, 1.6, 0}. Frontal positivo = z negativo (delante).
+    const PLAYER = { x: 0, y: 1.6, z: 0 };
+
+    it('mando bajo y delante de los pies del jugador: la bola queda como muro donde se soltó', () => {
+        const { bm, ball } = makeGreenBallAt(0.5, 1.4, -0.2);  // estado tras agarrar
+        ball.grabbed = true;
+        ball.ctrlPos = { x: 0, y: 0.15, z: -1.0 };
+
+        // Mando bajo (15cm) y delante (1m). Esto representa "a los pies, al frente".
+        const dropPos = { x: 0, y: 0.15, z: -1.0 };
+
+        const ok = bm.dropAsWall(ball, dropPos, PLAYER);
+
+        expect(ok).toBe(true);
+        // La bola se transforma en muro estático.
+        expect(ball._wall).toBe(true);
+        expect(ball.grabbed).toBe(false);
+        expect(ball.ctrlPos).toBe(null);
+        // Velocidad reseteada — no se mueve más.
+        expect(ball.velocity.x).toBe(0);
+        expect(ball.velocity.y).toBe(0);
+        expect(ball.velocity.z).toBe(0);
+        // Queda exactamente donde el jugador soltó el mando, en el suelo.
+        expect(ball.mesh.position.x).toBe(0);
+        expect(ball.mesh.position.y).toBe(0.15);
+        expect(ball.mesh.position.z).toBe(-1.0);
+        // Sigue formando parte del manager (no se elimina).
+        expect(bm.balls.includes(ball)).toBe(true);
+    });
+
+    it('drop válido a distintos X (a izquierda, centro, derecha): la bola queda exactamente donde se soltó', () => {
+        for (const x of [-1.5, -0.4, 0, 0.7, 1.8]) {
+            const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+            ball.grabbed = true;
+            const dropPos = { x, y: 0.2, z: -1.0 };
+            const ok = bm.dropAsWall(ball, dropPos, PLAYER);
+            expect(ok).toBe(true);
+            expect(ball.mesh.position.x).toBe(x);
+            expect(ball.mesh.position.y).toBe(0.2);
+            expect(ball.mesh.position.z).toBe(-1.0);
+        }
+    });
+
+    it('mando demasiado alto (y > 1.5m): la bola se descarta y desaparece del manager', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        const dropPos = { x: 0, y: 1.8, z: -1.0 };  // 1.8m: por encima del techo de muro
+
+        const ok = bm.dropAsWall(ball, dropPos, PLAYER);
+
+        expect(ok).toBe(false);
+        expect(ball._wall).toBeFalsy();
+        expect(bm.balls.includes(ball)).toBe(false);
+    });
+
+    it('mando demasiado cerca del jugador (frontDist < 0.5m): la bola se descarta', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        const dropPos = { x: 0, y: 0.2, z: -0.3 };  // sólo 0.3m delante: pegada a los pies
+
+        const ok = bm.dropAsWall(ball, dropPos, PLAYER);
+
+        expect(ok).toBe(false);
+        expect(ball._wall).toBeFalsy();
+        expect(bm.balls.includes(ball)).toBe(false);
+    });
+
+    it('mando detrás del jugador: la bola se descarta', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        const dropPos = { x: 0, y: 0.2, z: 1.0 };  // z>0 con player en z=0 → detrás
+
+        const ok = bm.dropAsWall(ball, dropPos, PLAYER);
+
+        expect(ok).toBe(false);
+        expect(bm.balls.includes(ball)).toBe(false);
+    });
+
+    it('justo en el límite y=1.5 y frontDist=0.5: válido (los límites son INclusivos)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        const dropPos = { x: 0, y: 1.5, z: -0.5 };
+
+        const ok = bm.dropAsWall(ball, dropPos, PLAYER);
+
+        expect(ok).toBe(true);
+        expect(ball._wall).toBe(true);
+        expect(ball.mesh.position.y).toBe(1.5);
+        expect(ball.mesh.position.z).toBe(-0.5);
+    });
+
+    it('un drop fallido NO toca el estado de las otras bolas', () => {
+        const { bm, ball: bad } = makeGreenBallAt(0, 1.2, 0);
+        bad.grabbed = true;
+        const otherGreen = bm.spawn('green', PLAYER);
+        const blue       = bm.spawn('blue', PLAYER);
+        const lengthAntes = bm.balls.length;
+
+        bm.dropAsWall(bad, { x: 0, y: 1.8, z: -1.0 }, PLAYER);  // alto → descarta
+
+        expect(bm.balls.includes(bad)).toBe(false);
+        expect(bm.balls.includes(otherGreen)).toBe(true);
+        expect(bm.balls.includes(blue)).toBe(true);
+        expect(bm.balls.length).toBe(lengthAntes - 1);
+    });
+});
+
 describe('Bola verde — hint visual', () => {
     function makeVec(x, y, z) {
         return { x, y, z, distanceTo(v) { return Math.hypot(x-v.x, y-v.y, z-v.z); } };

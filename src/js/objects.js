@@ -7,6 +7,9 @@ const COLORS = {
     green: 0x22cc55,
 };
 
+const WALL_MAX_Y          = 1.50;  // alto máximo donde se puede soltar la bola
+const WALL_MIN_FRONT_DIST = 0.50;  // mínima distancia frontal al jugador
+
 function randomGeo() {
     const r = THREE.MathUtils.lerp(0.1, 0.25, Math.random());
     return new THREE.SphereGeometry(r, 12, 12);
@@ -73,6 +76,29 @@ export class BallManager {
         }
 
         this._checkWallCollisions();
+    }
+
+    // Convierte una bola verde agarrada en un ladrillo del muro, si el
+    // mando está bajo (y ≤ 1.5m) y delante del jugador (frontDist ≥ 0.5m).
+    // En cualquier otro caso (alto, demasiado cerca, o detrás), descarta la
+    // bola eliminándola del manager.
+    // Devuelve true si la bola se quedó como muro, false si se descartó.
+    dropAsWall(ball, ctrlPos, playerPos) {
+        const frontDist = playerPos.z - ctrlPos.z;
+        const tooHigh   = ctrlPos.y > WALL_MAX_Y;
+        const tooClose  = frontDist < WALL_MIN_FRONT_DIST;
+
+        if (tooHigh || tooClose) {
+            this.remove(ball);
+            return false;
+        }
+
+        ball._wall   = true;
+        ball.grabbed = false;
+        ball.ctrlPos = null;
+        ball.velocity.set(0, 0, 0);
+        ball.mesh.position.copy(ctrlPos);
+        return true;
     }
 
     // Si una roja toca CUALQUIER bloque del muro verde, todo el muro se

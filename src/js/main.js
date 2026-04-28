@@ -256,29 +256,14 @@ function _tryGrabGreen(ctrl, idx) {
     }
 }
 
-const WALL_MAX_Y         = 1.50;  // alto máximo donde se puede soltar la bola
-const WALL_MIN_FRONT_DIST = 0.50;  // mínima distancia frontal al jugador
-
 function _activateGreen(ball, ctrl) {
     const ctrlPos = new THREE.Vector3();
     ctrl.getWorldPosition(ctrlPos);
 
-    const frontDist = _camPos.z - ctrlPos.z;  // positivo = delante del jugador
-    const tooHigh   = ctrlPos.y > WALL_MAX_Y;
-    const tooClose  = frontDist < WALL_MIN_FRONT_DIST;
-
-    if (tooHigh || tooClose) {
-        balls.remove(ball);
-        return;
+    if (balls.dropAsWall(ball, ctrlPos, _camPos)) {
+        metrics.ballHit('green');
+        sound.life();
     }
-
-    ball._wall   = true;
-    ball.grabbed = false;
-    ball.ctrlPos = null;
-    ball.velocity.set(0, 0, 0);
-    ball.mesh.position.copy(ctrlPos);
-    metrics.ballHit('green');
-    sound.life();
 }
 
 function endGame() {
