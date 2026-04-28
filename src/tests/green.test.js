@@ -528,14 +528,34 @@ describe('Bola verde — hint visual', () => {
         expect(hexValues[0]).toBe(0x000000);
     });
 
-    it('no aplica el hint a bolas ya convertidas en muro (_wall)', () => {
+    it('al pasar de "near" a "agarrada" el emissive se apaga (no se queda glowing)', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball._wall = true;
         const hexValues = [];
         ball.mesh.material.emissive.setHex = (v) => hexValues.push(v);
 
-        bm.updateGreenHints(makeVec(0, 1.2, 0), makeVec(0, 1.2, 0));
-        // Wall balls skipped: no setHex call
-        expect(hexValues.length).toBe(0);
+        // Frame 1: mando cerca → glow encendido.
+        bm.updateGreenHints(makeVec(0, 1.2, 0), makeVec(5, 0, 0));
+        expect(hexValues[hexValues.length - 1]).toBe(0x88ffaa);
+
+        // Frame 2: la bola se agarra. El hint debe APAGAR el emissive,
+        // no dejarla glowing como si siguiera siendo agarrable.
+        ball.grabbed = true;
+        bm.updateGreenHints(makeVec(0, 1.2, 0), makeVec(5, 0, 0));
+        expect(hexValues[hexValues.length - 1]).toBe(0x000000);
+        expect(ball.mesh.material.emissiveIntensity).toBe(0.2);
+    });
+
+    it('al pasar de "near" a "muro" el emissive se apaga (ladrillo no debe brillar)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const hexValues = [];
+        ball.mesh.material.emissive.setHex = (v) => hexValues.push(v);
+
+        bm.updateGreenHints(makeVec(0, 1.2, 0), makeVec(5, 0, 0));
+        expect(hexValues[hexValues.length - 1]).toBe(0x88ffaa);
+
+        ball._wall = true;
+        bm.updateGreenHints(makeVec(0, 1.2, 0), makeVec(5, 0, 0));
+        expect(hexValues[hexValues.length - 1]).toBe(0x000000);
+        expect(ball.mesh.material.emissiveIntensity).toBe(0.2);
     });
 });

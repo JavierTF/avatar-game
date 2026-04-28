@@ -254,12 +254,17 @@ export class BallManager {
     }
 
     // Hint visual: brillo verde cuando el mando está en rango de agarre.
-    // Activo en cualquier nivel. Las bolas ya agarradas o convertidas en muro
-    // se excluyen.
+    // Bolas agarradas o convertidas en muro se fuerzan a emissive APAGADO
+    // (en vez de saltarlas, que las dejaba "congeladas" con el último glow).
     updateGreenHints(p1, p2) {
         const GRAB_R = 0.45;  // coincide con GREEN_GRAB_R de collision.js
         for (const b of this.balls) {
-            if (b.type !== 'green' || b.grabbed || b._wall) continue;
+            if (b.type !== 'green') continue;
+            if (b.grabbed || b._wall) {
+                b.mesh.material.emissive.setHex(0x000000);
+                b.mesh.material.emissiveIntensity = 0.2;
+                continue;
+            }
             const near = (
                 p1.distanceTo(b.mesh.position) < GRAB_R ||
                 p2.distanceTo(b.mesh.position) < GRAB_R
