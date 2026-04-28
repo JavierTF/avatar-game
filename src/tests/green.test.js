@@ -311,6 +311,35 @@ describe('Bola verde — sigue al mando exactamente mientras está agarrada', ()
     });
 });
 
+describe('Bola verde agarrada — robusta contra out-of-bounds', () => {
+    it('una bola agarrada con position fuera de bounds NO se elimina (sigue al mando)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball.ctrlPos = { x: 10, y: 1.6, z: -10 };  // dentro de bounds
+        // Forzamos la posición fuera de bounds (mesh ya teleportado allí).
+        ball.mesh.position.set(10, 8, -10);  // y=8 > BOUNDS.yMax (4.5) + 2 = 6.5
+        ball.velocity.set(0, 0, 0);
+
+        bm.update(0.016, { x: 0, y: 1.6, z: 0 });
+
+        // No se elimina: queda viva porque está agarrada.
+        expect(bm.balls.includes(ball)).toBe(true);
+        expect(bm.balls.length).toBe(1);
+    });
+
+    it('bola NO agarrada con position fuera de bounds SÍ se elimina (no afecta el comportamiento normal)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = false;
+        ball.mesh.position.set(0, 8, 0);  // fuera de bounds
+        ball.velocity.set(0, 0, 0);
+
+        bm.update(0.016, { x: 0, y: 1.6, z: 0 });
+
+        expect(bm.balls.includes(ball)).toBe(false);
+        expect(bm.balls.length).toBe(0);
+    });
+});
+
 describe('Bola verde — un mando no agarra dos bolas a la vez', () => {
     const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
 

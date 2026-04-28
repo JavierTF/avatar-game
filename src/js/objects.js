@@ -64,10 +64,13 @@ export class BallManager {
                 this._moveBall(b, delta, playerPos);
             }
             // Bolas que ya pasaron detrás del jugador se eliminan inmediatamente
-            // (excepto las agarradas y las del muro).
+            // (excepto las agarradas y las del muro). Las agarradas tampoco
+            // caducan por out-of-bounds — siguen al mando aunque éste salga
+            // del área de juego, para no dejar grabbedBall1/2 colgando.
             const behind = !b.grabbed && !b._wall &&
                            b.mesh.position.z > playerPos.z + 0.5;
-            if (this._outOfBounds(b.mesh.position) || behind) {
+            const oob    = !b.grabbed && this._outOfBounds(b.mesh.position);
+            if (oob || behind) {
                 if (b.type === 'red' && !b._dropped && this.onRedEscaped) {
                     this.onRedEscaped();
                 }
