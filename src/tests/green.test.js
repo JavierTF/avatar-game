@@ -507,6 +507,24 @@ describe('Bola verde — drop como muro tras agarrar', () => {
         expect(ball.mesh.position.z).toBe(-0.5);
     });
 
+    it('dropAsWall lanza si la bola no está agarrada (contrato explícito)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        // ball.grabbed por defecto es false (recién spawneada).
+        const drop = { x: 0, y: 0.2, z: -1.0 };
+        expect(() => bm.dropAsWall(ball, drop, PLAYER)).toThrow();
+        // El estado de la bola no cambia.
+        expect(ball._wall).toBeFalsy();
+        expect(bm.balls.includes(ball)).toBe(true);
+    });
+
+    it('dropAsWall lanza si la bola ya es muro (no se re-walla)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball._wall   = true;
+        const drop = { x: 0, y: 0.2, z: -1.0 };
+        expect(() => bm.dropAsWall(ball, drop, PLAYER)).toThrow();
+    });
+
     it('un drop fallido NO toca el estado de las otras bolas', () => {
         const { bm, ball: bad } = makeGreenBallAt(0, 1.2, 0);
         bad.grabbed = true;

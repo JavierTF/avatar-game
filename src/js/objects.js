@@ -90,7 +90,11 @@ export class BallManager {
     // En cualquier otro caso (alto, demasiado cerca, o detrás), descarta la
     // bola eliminándola del manager.
     // Devuelve true si la bola se quedó como muro, false si se descartó.
+    // Lanza si la bola no está agarrada o ya es muro — contrato explícito.
     dropAsWall(ball, ctrlPos, playerPos) {
+        if (!ball.grabbed) throw new Error('dropAsWall: la bola no está agarrada');
+        if (ball._wall)    throw new Error('dropAsWall: la bola ya es muro');
+
         const frontDist = playerPos.z - ctrlPos.z;
         const tooHigh   = ctrlPos.y > WALL_MAX_Y;
         const tooClose  = frontDist < WALL_MIN_FRONT_DIST;
