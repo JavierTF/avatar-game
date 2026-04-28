@@ -11,7 +11,7 @@ vi.mock('three', () => {
         subVectors(a,b) { this.x=a.x-b.x; this.y=a.y-b.y; this.z=a.z-b.z; return this; }
         normalize() { return this; }
         multiplyScalar() { return this; }
-        add() { return this; }
+        add(v) { this.x+=v.x; this.y+=v.y; this.z+=v.z; return this; }
     }
     return {
         Vector3,
@@ -280,6 +280,24 @@ describe('Bola verde — sigue al mando exactamente mientras está agarrada', ()
         expect(ball.mesh.position.x).toBe(0.5);
         expect(ball.mesh.position.y).toBe(1.5);
         expect(ball.mesh.position.z).toBe(-0.2);
+    });
+
+    it('grabbed=true con ctrlPos=null NO aplica velocity (queda quieta donde estaba)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball.ctrlPos = null;
+        ball.mesh.position.set(0.4, 1.3, -0.1);
+        // Velocidad NO-cero: si la rama "grabbed" no protege, la bola se moverá.
+        ball.velocity.set(0.5, 0.5, 0.5);
+
+        bm._moveBall(ball, 0.016, { x: 0, y: 1.6, z: 0 });
+
+        // Estar agarrada IMPLICA no moverse, aunque ctrlPos haya quedado null
+        // por algún glitch. La invariante grabbed=true ⇒ ball quieta debe
+        // mantenerse independientemente de ctrlPos.
+        expect(ball.mesh.position.x).toBe(0.4);
+        expect(ball.mesh.position.y).toBe(1.3);
+        expect(ball.mesh.position.z).toBe(-0.1);
     });
 
     it('un cambio de ctrlPos entre frames se refleja inmediatamente en la posición', () => {

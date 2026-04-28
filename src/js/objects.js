@@ -196,8 +196,11 @@ export class BallManager {
     }
 
     _moveBall(ball, delta, playerPos) {
-        if (ball.grabbed && ball.ctrlPos) {
-            ball.mesh.position.copy(ball.ctrlPos);
+        // Una bola agarrada NO se mueve por su velocidad. Si tiene ctrlPos,
+        // sigue al mando; si por algún motivo ctrlPos es null, se queda quieta
+        // (no cae a la rama de velocity).
+        if (ball.grabbed) {
+            if (ball.ctrlPos) ball.mesh.position.copy(ball.ctrlPos);
             return;
         }
         // Movimiento LOCO para la roja: X e Y oscilan con dos ondas
