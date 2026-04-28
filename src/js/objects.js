@@ -85,6 +85,25 @@ export class BallManager {
         this._checkWallCollisions();
     }
 
+    // Intenta agarrar una verde en rango con el controlador `ctrl`. Si el
+    // mando ya tiene una bola (alreadyGrabbed=true), no agarra nada para
+    // evitar dejar la anterior huérfana. Devuelve la bola agarrada o null.
+    tryGrabGreen(ctrl, idx, alreadyGrabbed) {
+        if (alreadyGrabbed) return null;
+        const cp = new THREE.Vector3();
+        ctrl.getWorldPosition(cp);
+        for (const ball of this.balls) {
+            if (ball.type !== 'green' || ball.grabbed || ball._wall) continue;
+            if (cp.distanceTo(ball.mesh.position) < GREEN_GRAB_R) {
+                ball.grabbed = true;
+                ball.ctrlPos = cp.clone();
+                ball.mesh.position.copy(cp);
+                return ball;
+            }
+        }
+        return null;
+    }
+
     // Convierte una bola verde agarrada en un ladrillo del muro, si el
     // mando está bajo (y ≤ 1.5m) y delante del jugador (frontDist ≥ 0.5m).
     // En cualquier otro caso (alto, demasiado cerca, o detrás), descarta la

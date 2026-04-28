@@ -235,23 +235,18 @@ function handlePowers(gData) {
     }
 }
 
-// Agarre inmediato al pulsar el gatillo: si hay una verde en rango, la marcamos
-// agarrada en el mismo evento, sin esperar al próximo tick de collision.update.
-// Esto cubre pulsaciones cortas que de otra forma se perderían entre frames.
+// Agarre inmediato al pulsar el gatillo: si hay una verde en rango y el mando
+// no tiene ya una bola, la agarramos en el mismo evento, sin esperar al
+// próximo tick de collision.update. Cubre pulsaciones cortas y evita que un
+// segundo selectstart sin selectend en medio (XR quirk) deje huérfana la
+// primera bola.
 function _tryGrabGreen(ctrl, idx) {
     if (!balls) return;
-    const cp = new THREE.Vector3();
-    ctrl.getWorldPosition(cp);
-    for (const ball of balls.balls) {
-        if (ball.type !== 'green' || ball.grabbed || ball._wall) continue;
-        if (cp.distanceTo(ball.mesh.position) < GREEN_GRAB_R) {
-            ball.grabbed = true;
-            ball.ctrlPos = cp.clone();        // siguiente frame ya tiene ctrlPos
-            ball.mesh.position.copy(cp);      // teleporte instantáneo a la mano
-            if (idx === 1) grabbedBall1 = ball;
-            else            grabbedBall2 = ball;
-            return;
-        }
+    const already = idx === 1 ? !!grabbedBall1 : !!grabbedBall2;
+    const grabbed = balls.tryGrabGreen(ctrl, idx, already);
+    if (grabbed) {
+        if (idx === 1) grabbedBall1 = grabbed;
+        else            grabbedBall2 = grabbed;
     }
 }
 

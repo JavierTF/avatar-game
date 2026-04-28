@@ -358,6 +358,77 @@ describe('Bola verde agarrada — robusta contra out-of-bounds', () => {
     });
 });
 
+describe('Bola verde — tryGrabGreen (agarre inmediato en selectstart)', () => {
+    const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
+
+    it('agarra la verde más cercana en rango cuando alreadyGrabbed=false', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const ctrl = makeCtrlAt(0, 1.2, 0);
+
+        const grabbed = bm.tryGrabGreen(ctrl, 1, false);
+
+        expect(grabbed).toBe(ball);
+        expect(ball.grabbed).toBe(true);
+        expect(ball.ctrlPos.x).toBe(0);
+        expect(ball.ctrlPos.y).toBe(1.2);
+        expect(ball.ctrlPos.z).toBe(0);
+        // Mesh teleportada al mando en el mismo evento.
+        expect(ball.mesh.position.x).toBe(0);
+        expect(ball.mesh.position.y).toBe(1.2);
+        expect(ball.mesh.position.z).toBe(0);
+    });
+
+    it('NO agarra si alreadyGrabbed=true (mando ya ocupado)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const ctrl = makeCtrlAt(0, 1.2, 0);
+
+        const grabbed = bm.tryGrabGreen(ctrl, 1, true);
+
+        expect(grabbed).toBe(null);
+        expect(ball.grabbed).toBe(false);
+    });
+
+    it('NO agarra si no hay verde en rango', () => {
+        const { bm, ball } = makeGreenBallAt(2, 1.2, 0);  // lejos
+        const ctrl = makeCtrlAt(0, 1.2, 0);
+
+        const grabbed = bm.tryGrabGreen(ctrl, 1, false);
+
+        expect(grabbed).toBe(null);
+        expect(ball.grabbed).toBe(false);
+    });
+
+    it('skipea bolas ya agarradas y muros (busca la siguiente disponible)', () => {
+        const { bm } = makeGreenBallAt(0, 1.2, 0);
+        const ballA = bm.balls[0];
+        ballA.grabbed = true;  // ya agarrada por el otro mando
+
+        const ballB = bm.spawn('green', { x: 0, y: 1.6, z: 0 });
+        ballB.mesh.position.set(0.1, 1.2, 0);  // también en rango
+
+        const ctrl = makeCtrlAt(0, 1.2, 0);
+
+        const grabbed = bm.tryGrabGreen(ctrl, 1, false);
+
+        expect(grabbed).toBe(ballB);
+        expect(ballB.grabbed).toBe(true);
+        expect(ballA.grabbed).toBe(true);  // sigue siendo de otro
+    });
+
+    it('skipea bolas no verdes', () => {
+        const { bm } = makeGreenBallAt(5, 5, 5);  // green lejos, fuera del rango
+        const blue = bm.spawn('blue', { x: 0, y: 1.6, z: 0 });
+        blue.mesh.position.set(0, 1.2, 0);  // en rango pero azul
+
+        const ctrl = makeCtrlAt(0, 1.2, 0);
+
+        const grabbed = bm.tryGrabGreen(ctrl, 1, false);
+
+        expect(grabbed).toBe(null);
+        expect(blue.grabbed).toBeFalsy();
+    });
+});
+
 describe('Bola verde — un mando no agarra dos bolas a la vez', () => {
     const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
 
