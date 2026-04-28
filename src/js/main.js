@@ -4,7 +4,7 @@ import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFa
 import { createScene } from './scene.js';
 import { Player }      from './player.js';
 import { Difficulty }  from './difficulty.js';
-import { BallManager } from './objects.js';
+import { BallManager, GREEN_GRAB_R } from './objects.js';
 import { GestureDetector } from './gestures.js';
 import { Powers }      from './powers.js';
 import { CollisionSystem } from './collision.js';
@@ -242,10 +242,9 @@ function _tryGrabGreen(ctrl, idx) {
     if (!balls) return;
     const cp = new THREE.Vector3();
     ctrl.getWorldPosition(cp);
-    const R = 0.45;
     for (const ball of balls.balls) {
         if (ball.type !== 'green' || ball.grabbed || ball._wall) continue;
-        if (cp.distanceTo(ball.mesh.position) < R) {
+        if (cp.distanceTo(ball.mesh.position) < GREEN_GRAB_R) {
             ball.grabbed = true;
             ball.ctrlPos = cp.clone();        // siguiente frame ya tiene ctrlPos
             ball.mesh.position.copy(cp);      // teleporte instantáneo a la mano

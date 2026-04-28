@@ -1,15 +1,13 @@
 import * as THREE from 'three';
+import { GREEN_GRAB_R } from './objects.js';
 
 const _wp  = new THREE.Vector3();
 const _head = new THREE.Vector3();
 
-const BALL_R       = 0.15;
-const CTRL_R       = 0.08;
-const HEAD_R       = 0.18;
-const BODY_R       = 0.25;  // radio XZ del torso/piernas
-// La verde necesita un radio más generoso para que el agarre con gatillo
-// sea fácil de provocar — golpe directo es de 0.23, agarre 0.45.
-const GREEN_GRAB_R = BALL_R + CTRL_R + 0.22;
+const BALL_R = 0.15;
+const CTRL_R = 0.08;
+const HEAD_R = 0.18;
+const BODY_R = 0.25;  // radio XZ del torso/piernas
 
 export class CollisionSystem {
     constructor(player, ballManager) {

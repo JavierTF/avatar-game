@@ -10,6 +10,10 @@ const COLORS = {
 const WALL_MAX_Y          = 1.50;  // alto máximo donde se puede soltar la bola
 const WALL_MIN_FRONT_DIST = 0.50;  // mínima distancia frontal al jugador
 
+// Radio de agarre de la verde — fuente única de verdad.
+// Lo importan collision.js (detección) y main.js (selectstart).
+export const GREEN_GRAB_R = 0.45;
+
 function randomGeo() {
     const r = THREE.MathUtils.lerp(0.1, 0.25, Math.random());
     return new THREE.SphereGeometry(r, 12, 12);
@@ -257,7 +261,6 @@ export class BallManager {
     // Bolas agarradas o convertidas en muro se fuerzan a emissive APAGADO
     // (en vez de saltarlas, que las dejaba "congeladas" con el último glow).
     updateGreenHints(p1, p2) {
-        const GRAB_R = 0.45;  // coincide con GREEN_GRAB_R de collision.js
         for (const b of this.balls) {
             if (b.type !== 'green') continue;
             if (b.grabbed || b._wall) {
@@ -266,8 +269,8 @@ export class BallManager {
                 continue;
             }
             const near = (
-                p1.distanceTo(b.mesh.position) < GRAB_R ||
-                p2.distanceTo(b.mesh.position) < GRAB_R
+                p1.distanceTo(b.mesh.position) < GREEN_GRAB_R ||
+                p2.distanceTo(b.mesh.position) < GREEN_GRAB_R
             );
             b.mesh.material.emissive.setHex(near ? 0x88ffaa : 0x000000);
             b.mesh.material.emissiveIntensity = near ? 2.0 : 0.2;
