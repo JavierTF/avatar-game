@@ -131,6 +131,186 @@ describe('Bola verde — seguir al mando', () => {
     });
 });
 
+describe('Bola verde — agarre con cualquier orden de gatillo y cercanía', () => {
+    it('apretar gatillo primero y luego acercar el mando: se agarra al entrar en rango', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const collision = new CollisionSystem(makePlayer(), bm);
+        const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
+
+        // Frame 1: gatillo apretado pero mando lejos (>0.45m). NO se agarra.
+        const c1Far = makeCtrlAt(2, 1.2, 0);
+        const c2    = makeCtrlAt(5, 0, 0);
+        collision.update(c1Far, c2, cam, true, false);
+        expect(ball.grabbed).toBe(false);
+
+        // Frame 2: el mismo gatillo sigue apretado, ahora el mando se acerca.
+        // En el primer tick dentro del rango, la bola se agarra.
+        const c1Near = makeCtrlAt(0, 1.2, 0);
+        collision.update(c1Near, c2, cam, true, false);
+        expect(ball.grabbed).toBe(true);
+    });
+
+    it('acercar el mando primero y luego apretar el gatillo: se agarra al apretar', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const collision = new CollisionSystem(makePlayer(), bm);
+        const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
+
+        // Frame 1: mando ya cerca pero gatillo SUELTO. NO se agarra.
+        const c1 = makeCtrlAt(0, 1.2, 0);
+        const c2 = makeCtrlAt(5, 0, 0);
+        collision.update(c1, c2, cam, false, false);
+        expect(ball.grabbed).toBe(false);
+
+        // Frame 2: el mando sigue cerca, ahora apretamos el gatillo. Se agarra.
+        collision.update(c1, c2, cam, true, false);
+        expect(ball.grabbed).toBe(true);
+    });
+
+    it('mando lejos con gatillo apretado durante varios frames: nunca se agarra', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const collision = new CollisionSystem(makePlayer(), bm);
+        const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
+
+        const c1 = makeCtrlAt(2, 1.2, 0);   // distancia 2m, fuera del rango 0.45m
+        const c2 = makeCtrlAt(5, 0, 0);
+        for (let i = 0; i < 5; i++) {
+            collision.update(c1, c2, cam, true, true);
+        }
+        expect(ball.grabbed).toBe(false);
+        expect(ball.ctrlPos).toBe(null);
+    });
+
+    it('mando cerca pero ningún gatillo apretado durante varios frames: nunca se agarra', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const collision = new CollisionSystem(makePlayer(), bm);
+        const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
+
+        const c1 = makeCtrlAt(0, 1.2, 0);
+        const c2 = makeCtrlAt(0.1, 1.2, 0);
+        for (let i = 0; i < 5; i++) {
+            collision.update(c1, c2, cam, false, false);
+        }
+        expect(ball.grabbed).toBe(false);
+        expect(ball.ctrlPos).toBe(null);
+    });
+
+    it('cualquiera de los dos mandos puede ser el agarrador (c1 con held1, c2 con held2)', () => {
+        // Caso A: sólo c1 cerca y sólo held1 → agarra c1.
+        const { bm: bmA, ball: ballA } = makeGreenBallAt(0, 1.2, 0);
+        const collA = new CollisionSystem(makePlayer(), bmA);
+        let idxA = null;
+        collA.onGreenGrabbed = (_, idx) => { idxA = idx; };
+        const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
+        collA.update(makeCtrlAt(0, 1.2, 0), makeCtrlAt(5, 0, 0), cam, true, false);
+        expect(ballA.grabbed).toBe(true);
+        expect(idxA).toBe(1);
+
+        // Caso B: sólo c2 cerca y sólo held2 → agarra c2.
+        const { bm: bmB, ball: ballB } = makeGreenBallAt(0, 1.2, 0);
+        const collB = new CollisionSystem(makePlayer(), bmB);
+        let idxB = null;
+        collB.onGreenGrabbed = (_, idx) => { idxB = idx; };
+        collB.update(makeCtrlAt(5, 0, 0), makeCtrlAt(0, 1.2, 0), cam, false, true);
+        expect(ballB.grabbed).toBe(true);
+        expect(idxB).toBe(2);
+    });
+
+    it('al agarrar, la bola se teleporta exactamente a la posición del mando y guarda ctrlPos', () => {
+        const { bm, ball } = makeGreenBallAt(0.7, 1.5, -0.3);  // bola separada del mando
+        const collision = new CollisionSystem(makePlayer(), bm);
+        const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
+
+        // Mando en (0.5, 1.4, -0.2): a unos 0.27m de la bola, dentro del rango 0.45.
+        const c1 = makeCtrlAt(0.5, 1.4, -0.2);
+        const c2 = makeCtrlAt(5, 0, 0);
+        collision.update(c1, c2, cam, true, false);
+
+        expect(ball.grabbed).toBe(true);
+        expect(ball.mesh.position.x).toBe(0.5);
+        expect(ball.mesh.position.y).toBe(1.4);
+        expect(ball.mesh.position.z).toBe(-0.2);
+        expect(ball.ctrlPos.x).toBe(0.5);
+        expect(ball.ctrlPos.y).toBe(1.4);
+        expect(ball.ctrlPos.z).toBe(-0.2);
+    });
+
+    it('una bola convertida en muro (_wall) no se puede volver a agarrar', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball._wall = true;
+        const collision = new CollisionSystem(makePlayer(), bm);
+        const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
+
+        collision.update(makeCtrlAt(0, 1.2, 0), makeCtrlAt(5, 0, 0), cam, true, true);
+        expect(ball.grabbed).toBe(false);
+    });
+});
+
+describe('Bola verde — sigue al mando exactamente mientras está agarrada', () => {
+    it('la bola se teletransporta exactamente a ctrlPos en cada llamada de _moveBall', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        const playerPos = { x: 0, y: 1.6, z: 0 };
+
+        const trayectoria = [
+            { x:  0.5, y: 1.6, z: -0.1 },
+            { x: -0.3, y: 1.0, z: -0.5 },
+            { x:  1.2, y: 1.8, z:  0.2 },
+            { x:  0.0, y: 2.4, z: -1.5 },
+            { x:  2.0, y: 0.5, z: -3.0 },  // mando muy lejos: la bola lo sigue igual
+        ];
+
+        for (const p of trayectoria) {
+            ball.ctrlPos = p;
+            bm._moveBall(ball, 0.016, playerPos);
+            expect(ball.mesh.position.x).toBe(p.x);
+            expect(ball.mesh.position.y).toBe(p.y);
+            expect(ball.mesh.position.z).toBe(p.z);
+        }
+    });
+
+    it('la velocidad propia de la bola se ignora por completo mientras está agarrada', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball.ctrlPos = { x: 0.5, y: 1.5, z: -0.2 };
+        ball.velocity.set(99, -99, 99);  // velocidad absurda
+
+        bm._moveBall(ball, 0.016, { x: 0, y: 1.6, z: 0 });
+
+        // Acaba donde el mando, no donde la velocidad la habría llevado.
+        expect(ball.mesh.position.x).toBe(0.5);
+        expect(ball.mesh.position.y).toBe(1.5);
+        expect(ball.mesh.position.z).toBe(-0.2);
+    });
+
+    it('un cambio de ctrlPos entre frames se refleja inmediatamente en la posición', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        const playerPos = { x: 0, y: 1.6, z: 0 };
+
+        ball.ctrlPos = { x: 0.1, y: 1.2, z: 0 };
+        bm._moveBall(ball, 0.016, playerPos);
+        expect(ball.mesh.position.x).toBe(0.1);
+
+        // Mismo frame conceptual: el render loop reasigna ctrlPos antes de
+        // llamar _moveBall, así que el siguiente _moveBall ve el nuevo valor.
+        ball.ctrlPos = { x: -0.4, y: 1.2, z: 0 };
+        bm._moveBall(ball, 0.016, playerPos);
+        expect(ball.mesh.position.x).toBe(-0.4);
+    });
+
+    it('una bola agarrada con el mando detrás del jugador NO se elimina por la regla "behind"', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball.ctrlPos = { x: 0, y: 1.6, z: 1.5 };  // detrás del jugador (z > 0.5)
+        ball.velocity.set(0, 0, 0);
+
+        bm.update(0.016, { x: 0, y: 1.6, z: 0 });
+
+        expect(bm.balls.length).toBe(1);
+        expect(bm.balls[0].mesh.position.z).toBe(1.5);
+    });
+});
+
 describe('Bola verde — hint visual', () => {
     function makeVec(x, y, z) {
         return { x, y, z, distanceTo(v) { return Math.hypot(x-v.x, y-v.y, z-v.z); } };
