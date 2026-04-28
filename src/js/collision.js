@@ -20,7 +20,7 @@ export class CollisionSystem {
         this.onGreenGrabbed = null;
     }
 
-    update(c1, c2, camera, held1, held2) {
+    update(c1, c2, camera, held1, held2, ctrl1Busy = false, ctrl2Busy = false) {
         _head.setFromMatrixPosition(camera.matrixWorld);
         c1.getWorldPosition(_wp);
         const p1 = _wp.clone();
@@ -57,12 +57,15 @@ export class CollisionSystem {
                 if (ball.grabbed || ball._wall) continue;
                 const gh1 = p1.distanceTo(bp) < GREEN_GRAB_R;
                 const gh2 = p2.distanceTo(bp) < GREEN_GRAB_R;
-                if (gh1 && held1) {
+                // Cada mando sólo puede agarrar UNA bola a la vez. Si el
+                // mando ya tiene una bola agarrada (ctrlXBusy), no se vuelve
+                // a agarrar otra — evita que la bola anterior quede huérfana.
+                if (gh1 && held1 && !ctrl1Busy) {
                     ball.grabbed = true;
                     ball.ctrlPos = p1.clone();
                     ball.mesh.position.copy(p1);
                     if (this.onGreenGrabbed) this.onGreenGrabbed(ball, 1);
-                } else if (gh2 && held2) {
+                } else if (gh2 && held2 && !ctrl2Busy) {
                     ball.grabbed = true;
                     ball.ctrlPos = p2.clone();
                     ball.mesh.position.copy(p2);

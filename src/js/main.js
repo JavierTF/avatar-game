@@ -292,7 +292,7 @@ function renderLoop() {
     balls.update(delta, _camPos);
     handlePowers(gData);
 
-    collision.update(c1, c2, camera, held1, held2);
+    collision.update(c1, c2, camera, held1, held2, !!grabbedBall1, !!grabbedBall2);
     balls.updateGreenHints(gData.pos1, gData.pos2);
 
     powers.update(delta);

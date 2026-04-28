@@ -311,6 +311,63 @@ describe('Bola verde — sigue al mando exactamente mientras está agarrada', ()
     });
 });
 
+describe('Bola verde — un mando no agarra dos bolas a la vez', () => {
+    const cam = { matrixWorld: { x: 0, y: 1.6, z: 0 } };
+
+    it('mando con bola ya agarrada NO agarra una segunda bola en rango', () => {
+        const { bm } = makeGreenBallAt(0, 1.2, 0);
+        const ballA = bm.balls[0];
+        ballA.grabbed = true;
+        ballA.ctrlPos = { x: 0, y: 1.2, z: 0 };
+
+        const ballB = bm.spawn('green', { x: 0, y: 1.6, z: 0 });
+        ballB.mesh.position.set(0.1, 1.2, 0);  // dentro del rango del mando 1
+
+        const collision = new CollisionSystem(makePlayer(), bm);
+        const c1 = makeCtrlAt(0, 1.2, 0);
+        const c2 = makeCtrlAt(5, 0, 0);
+
+        // Mando 1 ocupado: el sexto y séptimo argumento marcan ctrlXBusy.
+        collision.update(c1, c2, cam, true, false, true, false);
+
+        expect(ballB.grabbed).toBe(false);
+        // ballA sigue siendo la única agarrada.
+        expect(ballA.grabbed).toBe(true);
+    });
+
+    it('cada mando puede agarrar su propia bola simultáneamente (mandos independientes)', () => {
+        const { bm } = makeGreenBallAt(-0.3, 1.2, 0);
+        const ballA = bm.balls[0];
+        const ballB = bm.spawn('green', { x: 0, y: 1.6, z: 0 });
+        ballB.mesh.position.set(0.3, 1.2, 0);
+
+        const collision = new CollisionSystem(makePlayer(), bm);
+        const grabs = [];
+        collision.onGreenGrabbed = (b, idx) => { grabs.push({ ball: b, idx }); };
+        const c1 = makeCtrlAt(-0.3, 1.2, 0);
+        const c2 = makeCtrlAt( 0.3, 1.2, 0);
+
+        collision.update(c1, c2, cam, true, true, false, false);
+
+        // Ambos mandos pudieron agarrar — no se solapan.
+        expect(ballA.grabbed).toBe(true);
+        expect(ballB.grabbed).toBe(true);
+        const idxs = grabs.map(g => g.idx).sort();
+        expect(idxs).toEqual([1, 2]);
+    });
+
+    it('si tras soltar (ctrl ya no busy) hay otra bola en rango, sí se agarra', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const collision = new CollisionSystem(makePlayer(), bm);
+        const c1 = makeCtrlAt(0, 1.2, 0);
+        const c2 = makeCtrlAt(5, 0, 0);
+
+        // ctrl1 NO ocupado (el jugador acaba de soltar la anterior).
+        collision.update(c1, c2, cam, true, false, false, false);
+        expect(ball.grabbed).toBe(true);
+    });
+});
+
 describe('Bola verde — drop como muro tras agarrar', () => {
     // playerPos a {0, 1.6, 0}. Frontal positivo = z negativo (delante).
     const PLAYER = { x: 0, y: 1.6, z: 0 };
