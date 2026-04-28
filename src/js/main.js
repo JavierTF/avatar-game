@@ -156,6 +156,16 @@ function startGame() {
 
     if (balls) balls.removeAll();
 
+    // Reset del estado XR — si el jugador llegó a game over con el trigger
+    // apretado, held1/held2 quedaban en true y grabbedBall1/2 referenciaban
+    // bolas eliminadas. Sin este reset el primer trigger del nuevo juego
+    // podía no agarrar (ctrlBusy=true por referencia colgante) y los poderes
+    // de dos manos podían dispararse antes de tiempo.
+    held1 = false;
+    held2 = false;
+    grabbedBall1 = null;
+    grabbedBall2 = null;
+
     const nivelInicial = parseInt(document.querySelector('input[name="nivel-inicio"]:checked')?.value ?? '1');
 
     player     = new Player(config);
