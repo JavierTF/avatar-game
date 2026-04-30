@@ -14,10 +14,11 @@ import { PlayerFeedback } from './feedback.js';
 import { ControllerTrail } from './trail.js';
 import { SoundFX } from './sound.js';
 import { CountdownHUD } from './countdown-hud.js';
+import { FinalMetricsPanel } from './final-metrics-panel.js';
 
 let renderer, scene, camera;
 let c1, c2, cg1, cg2;
-let player, difficulty, balls, gestures, powers, collision, hud, metrics, feedback, trail, countdown;
+let player, difficulty, balls, gestures, powers, collision, hud, metrics, feedback, trail, countdown, finalPanel;
 const sound = new SoundFX();
 let config;
 let clock;
@@ -181,6 +182,8 @@ function startGame() {
     feedback   = new PlayerFeedback(scene);
     if (countdown) countdown.dispose();
     countdown  = new CountdownHUD(scene);
+    if (finalPanel) finalPanel.hide();
+    else            finalPanel = new FinalMetricsPanel(scene);
 
     difficulty.onChange = (nivel) => {
         metrics.maxNivel = nivel;
@@ -276,6 +279,7 @@ function _activateGreen(ball, ctrl) {
 function endGame() {
     running = false;
     metrics.showScreen(player, difficulty.nivel);
+    if (finalPanel) finalPanel.show(player, difficulty.nivel, metrics, _camPos);
 }
 
 function renderLoop() {
