@@ -1,39 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('three', () => {
-    class Vector3 {
-        constructor(x=0,y=0,z=0) { this.x=x; this.y=y; this.z=z; }
-        copy(v) { this.x=v.x; this.y=v.y; this.z=v.z; return this; }
-        clone() { return new Vector3(this.x,this.y,this.z); }
-        set(x,y,z) { this.x=x; this.y=y; this.z=z; return this; }
-        distanceTo(v) { return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z); }
-        setFromMatrixPosition(m) { this.x=m.x||0; this.y=m.y||0; this.z=m.z||0; return this; }
-        subVectors(a,b) { this.x=a.x-b.x; this.y=a.y-b.y; this.z=a.z-b.z; return this; }
-        normalize() {
-            const l = Math.hypot(this.x, this.y, this.z) || 1;
-            this.x /= l; this.y /= l; this.z /= l;
-            return this;
-        }
-        multiplyScalar(s) { this.x*=s; this.y*=s; this.z*=s; return this; }
-        add(v) { this.x+=v.x; this.y+=v.y; this.z+=v.z; return this; }
-    }
-    return {
-        Vector3,
-        MathUtils: { lerp:(a,b,t)=>a+(b-a)*t, degToRad:(d)=>d*Math.PI/180 },
-        SphereGeometry:       class { dispose(){} },
-        MeshStandardMaterial: class { dispose(){} constructor(){ this.emissive={multiplyScalar(){},setHex(){}}; this.emissiveIntensity=0.2; } },
-        Mesh: class {
-            constructor(geo, mat) {
-                this.position = new Vector3();
-                this.castShadow = false;
-                this.rotation = {};
-                this.material = mat || { emissive: { multiplyScalar(){}, setHex(){} }, emissiveIntensity: 0.2 };
-                this.geometry = geo || { dispose(){} };
-            }
-        },
-        Color: class { multiplyScalar(){ return this; } },
-    };
-});
+vi.mock('three', async () => await import('./_three-mock.js'));
 
 vi.mock('../js/scene.js', () => ({ BOUNDS: { x:3.5, yMin:0.3, yMax:4.5, z:3.5 } }));
 
