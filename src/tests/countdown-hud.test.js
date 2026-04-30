@@ -76,6 +76,22 @@ describe('CountdownHUD — ciclo de vida del sprite', () => {
         expect(scene._removed).toContain(sprite);
         expect(scene._added.includes(sprite)).toBe(false);
     });
+
+    it('dispose es idempotente (llamarlo dos veces no rompe ni elimina extra)', () => {
+        const scene = makeScene();
+        const hud   = new CountdownHUD(scene);
+        hud.dispose();
+        const removedAfterFirst = scene._removed.length;
+        expect(() => hud.dispose()).not.toThrow();
+        expect(scene._removed.length).toBe(removedAfterFirst);
+    });
+
+    it('update tras dispose no rompe (no-op silencioso)', () => {
+        const scene = makeScene();
+        const hud   = new CountdownHUD(scene);
+        hud.dispose();
+        expect(() => hud.update(45, { x: 0, y: 0, z: 0 })).not.toThrow();
+    });
 });
 
 describe('CountdownHUD — posición del sprite tras update', () => {

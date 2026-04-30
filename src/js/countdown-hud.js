@@ -42,6 +42,7 @@ export class CountdownHUD {
     }
 
     update(remainingSeconds, cameraPos) {
+        if (!this._sprite) return;  // ya disposed → no-op
         const secs = Math.max(0, Math.ceil(remainingSeconds));
         const text = String(secs);
 
@@ -63,10 +64,12 @@ export class CountdownHUD {
     }
 
     dispose() {
+        if (!this._sprite) return;  // idempotente
         this.scene.remove(this._sprite);
         if (this._sprite.material.map && typeof this._sprite.material.map.dispose === 'function') {
             this._sprite.material.map.dispose();
         }
         this._sprite.material.dispose();
+        this._sprite = null;
     }
 }
