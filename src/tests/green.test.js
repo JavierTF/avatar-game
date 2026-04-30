@@ -9,8 +9,12 @@ vi.mock('three', () => {
         distanceTo(v) { return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z); }
         setFromMatrixPosition(m) { this.x=m.x||0; this.y=m.y||0; this.z=m.z||0; return this; }
         subVectors(a,b) { this.x=a.x-b.x; this.y=a.y-b.y; this.z=a.z-b.z; return this; }
-        normalize() { return this; }
-        multiplyScalar() { return this; }
+        normalize() {
+            const l = Math.hypot(this.x, this.y, this.z) || 1;
+            this.x /= l; this.y /= l; this.z /= l;
+            return this;
+        }
+        multiplyScalar(s) { this.x*=s; this.y*=s; this.z*=s; return this; }
         add(v) { this.x+=v.x; this.y+=v.y; this.z+=v.z; return this; }
     }
     return {

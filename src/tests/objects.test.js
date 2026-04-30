@@ -33,10 +33,14 @@ vi.mock('three', () => ({
         copy(v) { this.x=v.x; this.y=v.y; this.z=v.z; return this; }
         clone() { return Object.assign(new this.constructor(), this); }
         subVectors(a,b) { this.x=a.x-b.x; this.y=a.y-b.y; this.z=a.z-b.z; return this; }
-        normalize() { return this; }
-        multiplyScalar() { return this; }
+        normalize() {
+            const l = Math.hypot(this.x, this.y, this.z) || 1;
+            this.x /= l; this.y /= l; this.z /= l;
+            return this;
+        }
+        multiplyScalar(s) { this.x*=s; this.y*=s; this.z*=s; return this; }
         add(v) { this.x+=v.x; this.y+=v.y; this.z+=v.z; return this; }
-        distanceTo() { return 0; }
+        distanceTo(v) { return Math.hypot(this.x-v.x, this.y-v.y, this.z-v.z); }
     },
     MathUtils: { lerp: (a, b, t) => a + (b - a) * t, degToRad: (d) => d * Math.PI / 180 },
     BufferGeometry: class { setFromPoints() { return this; } },
