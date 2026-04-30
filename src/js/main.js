@@ -15,6 +15,7 @@ import { ControllerTrail } from './trail.js';
 import { SoundFX } from './sound.js';
 import { CountdownHUD } from './countdown-hud.js';
 import { FinalMetricsPanel } from './final-metrics-panel.js';
+import { activateGreen as _runActivateGreen, endGame as _runEndGame } from './game-flow.js';
 
 let renderer, scene, camera;
 let c1, c2, cg1, cg2;
@@ -269,17 +270,20 @@ function _tryGrabGreen(ctrl, idx) {
 function _activateGreen(ball, ctrl) {
     const ctrlPos = new THREE.Vector3();
     ctrl.getWorldPosition(ctrlPos);
-
-    if (balls.dropAsWall(ball, ctrlPos, _camPos)) {
-        metrics.ballHit('green');
-        sound.life();
-    }
+    _runActivateGreen(ball, ctrlPos, _camPos, balls, metrics, sound);
 }
 
 function endGame() {
-    running = false;
-    metrics.showScreen(player, difficulty.nivel);
-    if (finalPanel) finalPanel.show(player, difficulty.nivel, metrics, _camPos);
+    _runEndGame({
+        alreadyEnded: !running,
+        onStop:       () => { running = false; },
+        player,
+        nivel:        difficulty.nivel,
+        metrics,
+        finalPanel,
+        cameraPos:    _camPos,
+        countdown,
+    });
 }
 
 function renderLoop() {
