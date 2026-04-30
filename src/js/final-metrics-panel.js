@@ -29,6 +29,14 @@ function _renderToCanvas(player, nivel, metrics) {
     ctx.font = 'bold 32px Arial';
     ctx.fillText(`Nivel máximo: ${nivel}    Puntuación: ${player.puntos}`, CANVAS_W / 2, 150);
 
+    // Línea de tiempo total transcurrido.
+    const elapsed = Math.max(0, Math.round((Date.now() - (metrics.startTime || Date.now())) / 1000));
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    ctx.fillStyle = '#cccccc';
+    ctx.font = '28px Arial';
+    ctx.fillText(`Tiempo: ${mins}m ${secs}s`, CANVAS_W / 2, 195);
+
     // Cuerpo de la tabla — dos columnas.
     ctx.fillStyle = '#eeeeee';
     ctx.font = 'bold 30px Arial';
@@ -68,11 +76,11 @@ function _renderToCanvas(player, nivel, metrics) {
         yR += lineH;
     }
 
-    // Nota inferior.
+    // Nota inferior — sin imperativo de "pulsar" porque en VR no hay UI clickeable.
     ctx.fillStyle = '#888';
     ctx.font = '24px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Pulsa "Reiniciar" para volver a jugar', CANVAS_W / 2, CANVAS_H - 50);
+    ctx.fillText('Sesión finalizada', CANVAS_W / 2, CANVAS_H - 50);
 
     return new THREE.CanvasTexture(canvas);
 }

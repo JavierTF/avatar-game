@@ -254,6 +254,28 @@ describe('FinalMetricsPanel — contenido renderizado', () => {
     });
 });
 
+describe('FinalMetricsPanel — tiempo total y mensaje de pie', () => {
+    it('renderiza el tiempo total transcurrido en formato "Xm Ys"', () => {
+        const scene = makeScene();
+        const panel = new FinalMetricsPanel(scene);
+        const metrics = makeMetrics();
+        metrics.startTime = Date.now() - 65 * 1000;  // 65s = 1m 5s atrás
+        panel.show(makePlayer(), 3, metrics, { x: 0, y: 1.6, z: 0 });
+
+        const allText = _fakeCtx._texts.map(t => t.text).join(' ');
+        expect(allText.toLowerCase()).toContain('tiempo');
+        expect(allText).toMatch(/1m\s*5s/);
+    });
+
+    it('NO le pide al jugador "pulsar" un botón (no posible sin quitarse el headset)', () => {
+        const scene = makeScene();
+        const panel = new FinalMetricsPanel(scene);
+        panel.show(makePlayer(), 3, makeMetrics(), { x: 0, y: 1.6, z: 0 });
+        const allText = _fakeCtx._texts.map(t => t.text).join(' ').toLowerCase();
+        expect(allText).not.toContain('pulsa');
+    });
+});
+
 describe('FinalMetricsPanel — escala del sprite', () => {
     it('el sprite tiene escala suficiente para ser visible (>= 1.5 en X)', () => {
         const scene = makeScene();
