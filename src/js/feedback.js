@@ -101,16 +101,31 @@ export class PlayerFeedback {
             }
 
             if (e.life <= 0) {
-                this.scene.remove(e.halo);
-                e.halo.material.map.dispose();
-                e.halo.material.dispose();
-                if (e.text) {
-                    this.scene.remove(e.text);
-                    e.text.material.map.dispose();
-                    e.text.material.dispose();
-                }
+                this._removeEffect(e);
                 this._effects.splice(i, 1);
             }
+        }
+    }
+
+    // Elimina TODOS los efectos pendientes inmediatamente (sin esperar a que
+    // expiren naturalmente). Necesario al endGame intra-frame: si un golpe
+    // letal acaba de spawnear un popup y el render loop sale temprano,
+    // feedback.update no se ejecuta y el sprite quedaría leakeado en la
+    // escena hasta que removeAll del próximo startGame… que tampoco lo
+    // limpia (PlayerFeedback no se usa en removeAll).
+    clearAll() {
+        for (const e of this._effects) this._removeEffect(e);
+        this._effects.length = 0;
+    }
+
+    _removeEffect(e) {
+        this.scene.remove(e.halo);
+        e.halo.material.map.dispose();
+        e.halo.material.dispose();
+        if (e.text) {
+            this.scene.remove(e.text);
+            e.text.material.map.dispose();
+            e.text.material.dispose();
         }
     }
 }

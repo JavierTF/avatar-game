@@ -200,3 +200,56 @@ describe('PlayerFeedback — textPos billboard fijo', () => {
         expect(halo.position.z).toBe(-2);
     });
 });
+
+describe('PlayerFeedback — clearAll() (limpieza al endGame intra-frame)', () => {
+    it('clearAll() elimina todos los efectos pendientes de la escena', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('red',   pos, '♥ 1');
+        fb.spawn('blue',  pos, '♦ 2');
+        fb.spawn('green', pos, '♥ 3');
+        // Cada spawn con texto añade halo + texto = 2 sprites. 3 spawns = 6.
+        expect(scene.added.length).toBe(6);
+        expect(fb._effects.length).toBe(3);
+
+        fb.clearAll();
+
+        expect(fb._effects.length).toBe(0);
+        expect(scene.added.length).toBe(0);
+    });
+
+    it('clearAll() funciona también con efectos sin texto (solo halo)', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('red',  pos);  // sin texto = solo halo
+        fb.spawn('blue', pos);
+        expect(scene.added.length).toBe(2);
+
+        fb.clearAll();
+
+        expect(scene.added.length).toBe(0);
+        expect(fb._effects.length).toBe(0);
+    });
+
+    it('clearAll() es seguro si no hay efectos pendientes', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        expect(() => fb.clearAll()).not.toThrow();
+        expect(fb._effects.length).toBe(0);
+    });
+
+    it('clearAll() llama dispose en geometría/material/textura de cada efecto', () => {
+        const scene = makeScene();
+        const fb    = new PlayerFeedback(scene);
+        fb.spawn('red', pos, '♥ 1');
+        const e = fb._effects[0];
+        let haloMatDisposed = false, textMatDisposed = false;
+        e.halo.material.dispose = () => { haloMatDisposed = true; };
+        e.text.material.dispose = () => { textMatDisposed = true; };
+
+        fb.clearAll();
+
+        expect(haloMatDisposed).toBe(true);
+        expect(textMatDisposed).toBe(true);
+    });
+});

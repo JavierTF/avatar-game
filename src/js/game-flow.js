@@ -34,11 +34,16 @@ export function endGame({
     finalPanel,
     cameraPos,
     countdown,
+    feedback,
 }) {
     if (alreadyEnded) return false;
     onStop();
     metrics.showScreen(player, nivel);
     if (finalPanel) finalPanel.show(player, nivel, metrics, cameraPos);
     if (countdown) countdown.dispose();
+    // Limpia popups que pudieran haber quedado del último frame (un golpe
+    // letal spawnea un popup justo antes de endGame; sin esto, el sprite
+    // queda huérfano en la escena).
+    if (feedback) feedback.clearAll();
     return true;
 }

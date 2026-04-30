@@ -58,6 +58,7 @@ describe('game-flow — endGame', () => {
             finalPanel:   { show: vi.fn() },
             cameraPos:    { x: 0, y: 1.6, z: 0 },
             countdown:    { dispose: vi.fn() },
+            feedback:     { clearAll: vi.fn() },
             ...overrides,
         };
     }
@@ -84,11 +85,23 @@ describe('game-flow — endGame', () => {
         expect(args.countdown.dispose).not.toHaveBeenCalled();
     });
 
-    it('robusto si finalPanel y countdown son null', () => {
-        const args = makeArgs({ finalPanel: null, countdown: null });
+    it('robusto si finalPanel, countdown y feedback son null', () => {
+        const args = makeArgs({ finalPanel: null, countdown: null, feedback: null });
         expect(() => endGame(args)).not.toThrow();
         expect(args.onStop).toHaveBeenCalled();
         expect(args.metrics.showScreen).toHaveBeenCalled();
+    });
+
+    it('llama feedback.clearAll() para evitar popups huérfanos del último frame', () => {
+        const args = makeArgs();
+        endGame(args);
+        expect(args.feedback.clearAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('si alreadyEnded, NO llama feedback.clearAll() (idempotencia total)', () => {
+        const args = makeArgs({ alreadyEnded: true });
+        endGame(args);
+        expect(args.feedback.clearAll).not.toHaveBeenCalled();
     });
 
     it('llama onStop ANTES de los efectos de UI (showScreen / show / dispose)', () => {

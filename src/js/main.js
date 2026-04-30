@@ -283,6 +283,7 @@ function endGame() {
         finalPanel,
         cameraPos:    _camPos,
         countdown,
+        feedback,
     });
 }
 
