@@ -13,10 +13,11 @@ import { Metrics }     from './metrics.js';
 import { PlayerFeedback } from './feedback.js';
 import { ControllerTrail } from './trail.js';
 import { SoundFX } from './sound.js';
+import { CountdownHUD } from './countdown-hud.js';
 
 let renderer, scene, camera;
 let c1, c2, cg1, cg2;
-let player, difficulty, balls, gestures, powers, collision, hud, metrics, feedback, trail;
+let player, difficulty, balls, gestures, powers, collision, hud, metrics, feedback, trail, countdown;
 const sound = new SoundFX();
 let config;
 let clock;
@@ -178,6 +179,8 @@ function startGame() {
     hud.show();
     metrics    = new Metrics();
     feedback   = new PlayerFeedback(scene);
+    if (countdown) countdown.dispose();
+    countdown  = new CountdownHUD(scene);
 
     difficulty.onChange = (nivel) => {
         metrics.maxNivel = nivel;
@@ -305,6 +308,7 @@ function renderLoop() {
     player.updateMovimiento(camera, gData.pos1, gData.pos2, delta);
 
     hud.refresh(player, difficulty.nivel);
+    countdown.update(metrics.tiempoRestante(), _camPos);
 
     metrics.publishState(player, difficulty.nivel, _camPos, gData.pos1, gData.pos2, balls.getBallPositions());
 
