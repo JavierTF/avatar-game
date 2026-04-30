@@ -105,12 +105,15 @@ describe('SoundFX — disparos', () => {
     it('los métodos no rompen si el contexto falla al construirse', () => {
         const oldCtx = window.AudioContext;
         window.AudioContext = class { constructor() { throw new Error('no audio'); } };
-        const s = new SoundFX();
-        s.init();
-        expect(s.ctx).toBeNull();
-        expect(() => s.magic()).not.toThrow();
-        expect(() => s.life()).not.toThrow();
-        expect(() => s.negative()).not.toThrow();
-        window.AudioContext = oldCtx;
+        try {
+            const s = new SoundFX();
+            s.init();
+            expect(s.ctx).toBeNull();
+            expect(() => s.magic()).not.toThrow();
+            expect(() => s.life()).not.toThrow();
+            expect(() => s.negative()).not.toThrow();
+        } finally {
+            window.AudioContext = oldCtx;
+        }
     });
 });

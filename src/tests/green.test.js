@@ -312,8 +312,8 @@ describe('Bola verde agarrada — robusta contra out-of-bounds', () => {
     it('una bola agarrada con position fuera de bounds NO se elimina (sigue al mando)', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        ball.ctrlPos = { x: 10, y: 1.6, z: -10 };  // dentro de bounds
-        // Forzamos la posición fuera de bounds (mesh ya teleportado allí).
+        ball.ctrlPos = { x: 10, y: 1.6, z: -10 };  // (10, ., -10) está fuera de bounds (BOUNDS.x=3.5+2=5.5)
+        // Forzamos también la posición del mesh fuera de bounds (otra dimensión).
         ball.mesh.position.set(10, 8, -10);  // y=8 > BOUNDS.yMax (4.5) + 2 = 6.5
         ball.velocity.set(0, 0, 0);
 

@@ -90,12 +90,19 @@ describe('ControllerTrail — ciclo de vida de los puntos', () => {
         expect(p.mesh.material.opacity).toBeLessThan(opAntes);
     });
 
-    it('la opacidad nunca baja de 0', () => {
+    it('la opacidad nunca baja de 0 mientras el punto sigue vivo', () => {
         const scene = makeScene();
         const trail = new ControllerTrail(scene);
-        trail.update(0.2, true, pos1, pos2);
-        trail.update(1.0, false, pos1, pos2);   // mucho tiempo
-        // ya deberían haberse removido todos, pero la última opacidad nunca negativa.
+        // Spawn justo pasado el delay: holdTime=0.16. Tras el spawn el loop
+        // les resta 0.16, así que cada punto queda con life ~0.12.
+        trail.update(0.16, true, pos1, pos2);
+        // Ahora un paso pequeño: life ~0.07, todavía vivos.
+        trail.update(0.05, false, pos1, pos2);
+
+        // Garantizamos que la siguiente assertion realmente se ejecuta —
+        // si los puntos expirasen, el `for` quedaría vacío y el test daría
+        // un falso positivo.
+        expect(trail._points.length).toBeGreaterThan(0);
         for (const p of trail._points) {
             expect(p.mesh.material.opacity).toBeGreaterThanOrEqual(0);
         }

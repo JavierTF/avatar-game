@@ -90,11 +90,14 @@ describe('CountdownHUD — posición del sprite tras update', () => {
         expect(hud._sprite.position.z).toBe(10 + COUNTDOWN_OFFSET.z);
     });
 
-    it('el sprite queda a la IZQUIERDA del jugador (x < cameraPos.x)', () => {
+    it('el sprite queda a la IZQUIERDA del jugador con un offset significativo (no marginal)', () => {
         const scene = makeScene();
         const hud   = new CountdownHUD(scene);
         hud.update(60, { x: 2, y: 1.6, z: 0 });
-        expect(hud._sprite.position.x).toBeLessThan(2);
+        // Espera que el offset sea de al menos 1m a la izquierda — no sólo
+        // "un poco menos que cameraPos.x" que admitiría offsets ridículos.
+        expect(hud._sprite.position.x).toBeLessThanOrEqual(2 - 1.0);
+        expect(COUNTDOWN_OFFSET.x).toBeLessThan(0);  // ratifica lateralidad
     });
 
     it('la altura es fija (Y=2.4) sin importar la altura de la cámara', () => {

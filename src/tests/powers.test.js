@@ -6,14 +6,22 @@ vi.mock('three', () => ({
     },
     Vector3: class {
         constructor(x=0,y=0,z=0) { this.x=x; this.y=y; this.z=z; }
-        set() { return this; }
-        copy() { return this; }
-        clone() { return new this.constructor(); }
-        subVectors() { return this; }
-        normalize() { return this; }
-        multiplyScalar() { return this; }
-        addScaledVector() { return this; }
-        distanceTo() { return 999; }
+        set(x,y,z)         { this.x=x; this.y=y; this.z=z; return this; }
+        copy(v)            { this.x=v.x; this.y=v.y; this.z=v.z; return this; }
+        clone() {
+            const c = new this.constructor();
+            c.x = this.x; c.y = this.y; c.z = this.z;
+            return c;
+        }
+        subVectors(a,b)    { this.x=a.x-b.x; this.y=a.y-b.y; this.z=a.z-b.z; return this; }
+        normalize() {
+            const l = Math.hypot(this.x, this.y, this.z) || 1;
+            this.x /= l; this.y /= l; this.z /= l;
+            return this;
+        }
+        multiplyScalar(s)  { this.x*=s; this.y*=s; this.z*=s; return this; }
+        addScaledVector(v, s) { this.x+=v.x*s; this.y+=v.y*s; this.z+=v.z*s; return this; }
+        distanceTo(v)      { return Math.hypot(this.x-v.x, this.y-v.y, this.z-v.z); }
     },
     TorusGeometry:    class { },
     RingGeometry:     class { },
