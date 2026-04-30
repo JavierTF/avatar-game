@@ -308,6 +308,17 @@ function renderLoop() {
     handlePowers(gData);
 
     collision.update(c1, c2, camera, held1, held2, !!grabbedBall1, !!grabbedBall2);
+
+    // Si una colisión letal disparó endGame() intra-frame, salimos antes de
+    // ejecutar el resto del frame (countdown, métricas, etc.) — el contador
+    // ya fue dispuesto por endGame y countdown.update() reventaría sin nuestro
+    // guard de no-op (CountdownHUD post-dispose). Renderizamos una vez para
+    // que el panel final aparezca de inmediato.
+    if (!running) {
+        renderer.render(scene, camera);
+        return;
+    }
+
     balls.updateGreenHints(gData.pos1, gData.pos2);
 
     powers.update(delta);
