@@ -1,3 +1,7 @@
+// Límite de duración de una partida (segundos). Al expirar, el juego termina
+// como si el jugador hubiese perdido todas las vidas.
+export const TIME_LIMIT_S = 60;
+
 const EVAL = [
     { label: 'Toph',   min: 0,    max: 0.25 },
     { label: 'Katara', min: 0.25, max: 0.50 },
@@ -41,6 +45,17 @@ export class Metrics {
         if (this.rachaActual > this.rachaMaxSinDaño) this.rachaMaxSinDaño = this.rachaActual;
     }
     powerUsed(name, killed)   { if (this.powers[name]) { this.powers[name].used++; this.powers[name].killed += killed || 0; } }
+
+    // Segundos restantes de partida, clampeado a 0.
+    tiempoRestante(now = Date.now()) {
+        const elapsed = (now - this.startTime) / 1000;
+        return Math.max(0, TIME_LIMIT_S - elapsed);
+    }
+
+    // True si la partida superó el límite temporal.
+    expirado(now = Date.now()) {
+        return (now - this.startTime) / 1000 >= TIME_LIMIT_S;
+    }
 
     publishState(player, nivel, playerPos, c1, c2, balls) {
         try {

@@ -308,6 +308,9 @@ function renderLoop() {
 
     metrics.publishState(player, difficulty.nivel, _camPos, gData.pos1, gData.pos2, balls.getBallPositions());
 
+    // Fin de partida por tiempo: 1 minuto de duración.
+    if (metrics.expirado()) endGame();
+
     renderer.render(scene, camera);
 }
 

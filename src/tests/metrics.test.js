@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { Metrics } from '../js/metrics.js';
+import { Metrics, TIME_LIMIT_S } from '../js/metrics.js';
 
 function makePlayer(overrides = {}) {
     return {
@@ -139,5 +139,63 @@ describe('Metrics — buildHTML', () => {
         // Poderes
         expect(html).toContain('Mana total consumido');
         expect(html).toContain('80');
+    });
+});
+
+describe('Metrics — límite de tiempo de 1 minuto', () => {
+    it('exporta TIME_LIMIT_S = 60', () => {
+        expect(TIME_LIMIT_S).toBe(60);
+    });
+
+    it('tiempoRestante en el instante de inicio es exactamente 60', () => {
+        const m = new Metrics();
+        expect(m.tiempoRestante(m.startTime)).toBe(60);
+    });
+
+    it('tiempoRestante decrece linealmente con el tiempo transcurrido', () => {
+        const m = new Metrics();
+        m.startTime = 1000;
+        expect(m.tiempoRestante(1000)).toBe(60);
+        expect(m.tiempoRestante(1000 + 30000)).toBe(30);
+        expect(m.tiempoRestante(1000 + 59000)).toBe(1);
+    });
+
+    it('tiempoRestante se clampa a 0 cuando se pasa el límite (no negativo)', () => {
+        const m = new Metrics();
+        m.startTime = 1000;
+        expect(m.tiempoRestante(1000 + 60000)).toBe(0);
+        expect(m.tiempoRestante(1000 + 60001)).toBe(0);
+        expect(m.tiempoRestante(1000 + 999999)).toBe(0);
+    });
+
+    it('expirado() es false antes de los 60s', () => {
+        const m = new Metrics();
+        m.startTime = 1000;
+        expect(m.expirado(1000)).toBe(false);
+        expect(m.expirado(1000 + 30000)).toBe(false);
+        expect(m.expirado(1000 + 59999)).toBe(false);
+    });
+
+    it('expirado() es true exactamente al alcanzar 60s y después', () => {
+        const m = new Metrics();
+        m.startTime = 1000;
+        expect(m.expirado(1000 + 60000)).toBe(true);
+        expect(m.expirado(1000 + 70000)).toBe(true);
+        expect(m.expirado(1000 + 999999)).toBe(true);
+    });
+
+    it('reset() reinicia startTime así tiempoRestante vuelve a 60', () => {
+        const m = new Metrics();
+        m.startTime = 1000;
+        expect(m.tiempoRestante(1000 + 30000)).toBe(30);
+
+        // Reset moves startTime to "now". Simulamos llamando reset y luego
+        // consultando inmediatamente.
+        const beforeReset = Date.now();
+        m.reset();
+        const afterReset = Date.now();
+        expect(m.startTime).toBeGreaterThanOrEqual(beforeReset);
+        expect(m.startTime).toBeLessThanOrEqual(afterReset);
+        expect(m.tiempoRestante(m.startTime)).toBe(60);
     });
 });
