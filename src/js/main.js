@@ -284,6 +284,8 @@ function endGame() {
         cameraPos:    _camPos,
         countdown,
         feedback,
+        powers,
+        trail,
     });
 }
 

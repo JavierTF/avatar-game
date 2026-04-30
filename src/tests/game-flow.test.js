@@ -76,6 +76,8 @@ describe('game-flow — endGame', () => {
             cameraPos:    { x: 0, y: 1.6, z: 0 },
             countdown:    { dispose: vi.fn() },
             feedback:     { clearAll: vi.fn() },
+            powers:       { clearAll: vi.fn() },
+            trail:        { clearAll: vi.fn() },
             ...overrides,
         };
     }
@@ -102,11 +104,19 @@ describe('game-flow — endGame', () => {
         expect(args.countdown.dispose).not.toHaveBeenCalled();
     });
 
-    it('robusto si finalPanel, countdown y feedback son null', () => {
-        const args = makeArgs({ finalPanel: null, countdown: null, feedback: null });
+    it('robusto si finalPanel, countdown, feedback, powers y trail son null', () => {
+        const args = makeArgs({ finalPanel: null, countdown: null, feedback: null,
+                                powers: null, trail: null });
         expect(() => endGame(args)).not.toThrow();
         expect(args.onStop).toHaveBeenCalled();
         expect(args.metrics.showScreen).toHaveBeenCalled();
+    });
+
+    it('llama powers.clearAll() y trail.clearAll() — efectos del frame final no leakean', () => {
+        const args = makeArgs();
+        endGame(args);
+        expect(args.powers.clearAll).toHaveBeenCalledTimes(1);
+        expect(args.trail.clearAll).toHaveBeenCalledTimes(1);
     });
 
     it('llama feedback.clearAll() para evitar popups huérfanos del último frame', () => {

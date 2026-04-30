@@ -39,15 +39,22 @@ export function endGame({
     cameraPos,
     countdown,
     feedback,
+    powers,
+    trail,
 }) {
     if (alreadyEnded) return false;
     onStop();
     metrics.showScreen(player, nivel);
     if (finalPanel) finalPanel.show(player, nivel, metrics, cameraPos);
     if (countdown) countdown.dispose();
-    // Limpia popups que pudieran haber quedado del último frame (un golpe
-    // letal spawnea un popup justo antes de endGame; sin esto, el sprite
-    // queda huérfano en la escena).
+    // Limpia efectos visuales pendientes del último frame. Sin esto, los
+    // sprites quedan congelados en escena indefinidamente porque el resto
+    // del renderLoop se salta tras endGame intra-frame:
+    //   - feedback popups (♥ N del golpe letal)
+    //   - powers FX (escudo/sismico/llama/viento si dispararon en el mismo frame)
+    //   - controller trail (puntos de estela acumulados)
     if (feedback) feedback.clearAll();
+    if (powers)   powers.clearAll();
+    if (trail)    trail.clearAll();
     return true;
 }

@@ -223,6 +223,47 @@ describe('Powers — efectos visuales: ciclo de vida', () => {
     });
 });
 
+describe('Powers — clearAll() (limpieza al endGame intra-frame)', () => {
+    it('clearAll() elimina TODOS los efectos pendientes y vacía _effects', () => {
+        const scene  = makeMockScene();
+        // Mana abundante para que los 4 poderes activen sin fallo de coste.
+        const powers = new Powers(scene, makeMockPlayer(500), makeMockBalls(), new Difficulty(1));
+        powers.activateEscudo(mockVec, mockVec);
+        powers.activateSismico(mockVec);
+        powers.activateLlama(mockVec, mockVec);
+        powers.activateViento(mockVec);
+        expect(scene.added.length).toBe(4);
+        expect(powers._effects.length).toBe(4);
+
+        powers.clearAll();
+
+        expect(powers._effects.length).toBe(0);
+        expect(scene.added.length).toBe(0);
+    });
+
+    it('clearAll() es seguro si no hay efectos pendientes', () => {
+        const scene  = makeMockScene();
+        const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
+        expect(() => powers.clearAll()).not.toThrow();
+        expect(powers._effects.length).toBe(0);
+    });
+
+    it('clearAll() llama dispose en geometry y material de cada efecto', () => {
+        const scene  = makeMockScene();
+        const powers = new Powers(scene, makeMockPlayer(), makeMockBalls(), new Difficulty(1));
+        powers.activateEscudo(mockVec, mockVec);
+        const e = powers._effects[0];
+        let geoDisposed = false, matDisposed = false;
+        e.mesh.geometry.dispose = () => { geoDisposed = true; };
+        e.mesh.material.dispose = () => { matDisposed = true; };
+
+        powers.clearAll();
+
+        expect(geoDisposed).toBe(true);
+        expect(matDisposed).toBe(true);
+    });
+});
+
 describe('Powers — Viento Eterno: lanzamiento hacia atrás y abajo', () => {
     const playerVec = {
         x: 0, y: 1.6, z: 0,

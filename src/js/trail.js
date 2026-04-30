@@ -52,4 +52,17 @@ export class ControllerTrail {
         this.scene.add(mesh);
         this._points.push({ mesh, life: POINT_LIFE });
     }
+
+    // Elimina todos los puntos pendientes y resetea el holdTime. Necesario
+    // al endGame intra-frame para evitar que la estela quede congelada en
+    // escena entre partidas (trail se crea una sola vez en init()).
+    clearAll() {
+        for (const p of this._points) {
+            this.scene.remove(p.mesh);
+            p.mesh.geometry.dispose();
+            p.mesh.material.dispose();
+        }
+        this._points.length = 0;
+        this._holdTime = 0;
+    }
 }

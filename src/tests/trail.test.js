@@ -90,6 +90,37 @@ describe('ControllerTrail — ciclo de vida de los puntos', () => {
         expect(p.mesh.material.opacity).toBeLessThan(opAntes);
     });
 
+    it('clearAll() elimina TODOS los puntos pendientes', () => {
+        const scene = makeScene();
+        const trail = new ControllerTrail(scene);
+        trail.update(0.2, true, pos1, pos2);  // 2 puntos
+        trail.update(0.05, true, pos1, pos2); // 2 más
+        expect(trail._points.length).toBe(4);
+        expect(scene.added.length).toBe(4);
+
+        trail.clearAll();
+
+        expect(trail._points.length).toBe(0);
+        expect(scene.added.length).toBe(0);
+    });
+
+    it('clearAll() es seguro si no hay puntos', () => {
+        const scene = makeScene();
+        const trail = new ControllerTrail(scene);
+        expect(() => trail.clearAll()).not.toThrow();
+    });
+
+    it('clearAll() resetea _holdTime para que el delay vuelva a aplicarse', () => {
+        const scene = makeScene();
+        const trail = new ControllerTrail(scene);
+        trail.update(0.2, true, pos1, pos2);  // holdTime > delay
+        trail.clearAll();
+        // Tras clearAll, el delay debe volver a aplicar — un update corto
+        // posterior NO debe spawnear puntos.
+        trail.update(0.05, true, pos1, pos2);
+        expect(scene.added.length).toBe(0);
+    });
+
     it('la opacidad nunca baja de 0 mientras el punto sigue vivo', () => {
         const scene = makeScene();
         const trail = new ControllerTrail(scene);

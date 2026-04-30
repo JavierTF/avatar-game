@@ -239,11 +239,25 @@ export class Powers {
             e.mesh.material.opacity = Math.max(0, e.baseOpacity * Math.max(0, e.life));
 
             if (e.life <= 0) {
-                this.scene.remove(e.mesh);
-                e.mesh.geometry.dispose();
-                e.mesh.material.dispose();
+                this._removeEffect(e);
                 this._effects.splice(i, 1);
             }
         }
+    }
+
+    // Elimina TODOS los efectos visuales pendientes (escudo, sismico, llama,
+    // viento). Necesario al endGame intra-frame: el resto del renderLoop se
+    // salta y `update` no se vuelve a llamar, por lo que efectos recién
+    // spawneados quedarían congelados en escena indefinidamente.
+    clearAll() {
+        for (const e of this._effects) this._removeEffect(e);
+        this._effects.length = 0;
+        this._activeShield = null;
+    }
+
+    _removeEffect(e) {
+        this.scene.remove(e.mesh);
+        e.mesh.geometry.dispose();
+        e.mesh.material.dispose();
     }
 }
