@@ -42,6 +42,23 @@ describe('game-flow — activateGreen', () => {
         activateGreen(ball, ctrlPos, playerPos, balls, metrics, sound);
         expect(balls.dropAsWall).toHaveBeenCalledWith(ball, ctrlPos, playerPos);
     });
+
+    it('gameRunning=false → no-op total: no llama dropAsWall, no suena, no cuenta', () => {
+        const { balls, metrics, sound } = makeDeps(true);
+        const ok = activateGreen({}, {}, {}, balls, metrics, sound, false);
+        expect(ok).toBe(false);
+        expect(balls.dropAsWall).not.toHaveBeenCalled();
+        expect(metrics.ballHit).not.toHaveBeenCalled();
+        expect(sound.life).not.toHaveBeenCalled();
+        expect(sound.negative).not.toHaveBeenCalled();
+    });
+
+    it('gameRunning=true (default) → comportamiento normal', () => {
+        const { balls, metrics, sound } = makeDeps(true);
+        const ok = activateGreen({}, {}, {}, balls, metrics, sound, true);
+        expect(ok).toBe(true);
+        expect(sound.life).toHaveBeenCalled();
+    });
 });
 
 // =============================================================================

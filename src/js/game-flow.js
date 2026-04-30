@@ -7,7 +7,11 @@
 // Antes el caso de fracaso quedaba sin feedback alguno: la bola desaparecía
 // silenciosamente y el jugador no sabía por qué su intento de muro no había
 // funcionado.
-export function activateGreen(ball, ctrlPos, playerPos, balls, metrics, sound) {
+//
+// `gameRunning` evita que un selectend tras game over (jugador soltando el
+// trigger después de morir/expirar tiempo) dispare sonidos o cambie estado.
+export function activateGreen(ball, ctrlPos, playerPos, balls, metrics, sound, gameRunning = true) {
+    if (!gameRunning) return false;
     if (balls.dropAsWall(ball, ctrlPos, playerPos)) {
         metrics.ballHit('green');
         sound.life();

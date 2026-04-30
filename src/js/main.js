@@ -270,7 +270,7 @@ function _tryGrabGreen(ctrl, idx) {
 function _activateGreen(ball, ctrl) {
     const ctrlPos = new THREE.Vector3();
     ctrl.getWorldPosition(ctrlPos);
-    _runActivateGreen(ball, ctrlPos, _camPos, balls, metrics, sound);
+    _runActivateGreen(ball, ctrlPos, _camPos, balls, metrics, sound, running);
 }
 
 function endGame() {
