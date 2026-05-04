@@ -16,6 +16,7 @@ import { SoundFX } from './sound.js';
 import { CountdownHUD } from './countdown-hud.js';
 import { FinalMetricsPanel } from './final-metrics-panel.js';
 import { activateGreen as _runActivateGreen, endGame as _runEndGame } from './game-flow.js';
+import { TriggerDebouncer } from './trigger-debounce.js';
 
 let renderer, scene, camera;
 let c1, c2, cg1, cg2;
@@ -26,6 +27,7 @@ let clock;
 let running = false;
 let held1 = false, held2 = false;
 let grabbedBall1 = null, grabbedBall2 = null;
+const _triggerDeb = new TriggerDebouncer();
 let isDesktop = false;
 let _mouseDown = false;
 let _yaw = 0, _pitch = 0;
@@ -91,13 +93,25 @@ async function init() {
     c1.add(ray.clone());
     c2.add(ray.clone());
 
-    c1.addEventListener('selectstart', () => { held1 = true; _tryGrabGreen(c1, 1); });
+    c1.addEventListener('selectstart', () => {
+        _triggerDeb.onPress(1);
+        held1 = true;
+        _tryGrabGreen(c1, 1);
+    });
     c1.addEventListener('selectend',   () => {
+        // Filtra selectend espurio: si el press duró <100ms, asumimos ruido
+        // del runtime XR y NO procesamos el drop. La bola sigue agarrada.
+        if (!_triggerDeb.onRelease(1)) return;
         held1 = false;
         if (grabbedBall1) { _activateGreen(grabbedBall1, c1); grabbedBall1 = null; }
     });
-    c2.addEventListener('selectstart', () => { held2 = true; _tryGrabGreen(c2, 2); });
+    c2.addEventListener('selectstart', () => {
+        _triggerDeb.onPress(2);
+        held2 = true;
+        _tryGrabGreen(c2, 2);
+    });
     c2.addEventListener('selectend',   () => {
+        if (!_triggerDeb.onRelease(2)) return;
         held2 = false;
         if (grabbedBall2) { _activateGreen(grabbedBall2, c2); grabbedBall2 = null; }
     });
