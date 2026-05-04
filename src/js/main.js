@@ -34,6 +34,8 @@ let _yaw = 0, _pitch = 0;
 
 const _fwd = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
+const _grabPos1 = new THREE.Vector3();
+const _grabPos2 = new THREE.Vector3();
 
 // Posición fija (en mundo) donde aparecen las métricas de feedback:
 // al frente, lejos, algo arriba, un poco a la derecha de donde vienen las bolas.
@@ -313,12 +315,23 @@ function renderLoop() {
 
     _camPos.setFromMatrixPosition(camera.matrixWorld);
 
-    // Posiciones de mandos PRIMERO. Si una bola está agarrada, le asignamos
-    // la posición fresca del mando ANTES de que balls.update llame a _moveBall —
-    // así la bola sigue al mando sin un frame de retraso.
     const gData = gestures.update(delta, c1, c2);
-    if (grabbedBall1) grabbedBall1.ctrlPos = gData.pos1;
-    if (grabbedBall2) grabbedBall2.ctrlPos = gData.pos2;
+
+    // Drag de bolas verdes agarradas: leemos la pos FRESCA del mando vía
+    // getWorldPosition (que fuerza updateWorldMatrix) en lugar de usar
+    // gData.pos1, que lee matrixWorld sin actualizar y puede quedar stale.
+    // También copiamos directo a mesh.position para que el frame actual ya
+    // muestre la bola en la mano (no dependemos de _moveBall posterior).
+    if (grabbedBall1) {
+        c1.getWorldPosition(_grabPos1);
+        grabbedBall1.ctrlPos = _grabPos1;
+        grabbedBall1.mesh.position.copy(_grabPos1);
+    }
+    if (grabbedBall2) {
+        c2.getWorldPosition(_grabPos2);
+        grabbedBall2.ctrlPos = _grabPos2;
+        grabbedBall2.mesh.position.copy(_grabPos2);
+    }
 
     balls.update(delta, _camPos);
     handlePowers(gData);

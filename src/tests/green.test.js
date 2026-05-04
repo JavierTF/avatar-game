@@ -1275,6 +1275,52 @@ describe('Bola verde — trigger "tap" (selectstart inmediatamente seguido de se
     });
 });
 
+describe('Bola verde — drag lee SIEMPRE pos fresca del mando vía getWorldPosition', () => {
+    // Simulamos lo que main.js hará en cada frame: leer la pos del mando
+    // directamente con ctrl.getWorldPosition (no vía gestures), asignarla a
+    // ball.ctrlPos y a ball.mesh.position.
+    function dragOneFrame(ball, ctrl) {
+        const wp = { x: 0, y: 0, z: 0 };
+        ctrl.getWorldPosition(wp);
+        ball.ctrlPos = wp;
+        ball.mesh.position.copy(wp);
+    }
+
+    it('drag lee pos fresca del mando cada frame, no depende de un cache previo', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+
+        // Frame 1: mando en (0.1, 1.0, 0).
+        const ctrl = makeCtrlAt(0.1, 1.0, 0);
+        dragOneFrame(ball, ctrl);
+        expect(ball.mesh.position.x).toBe(0.1);
+        expect(ball.mesh.position.y).toBe(1.0);
+
+        // Frame 2: mando se mueve a (0.5, 1.4, -0.2). Reemplazamos ctrl
+        // (simulamos que el mando ahora reporta otra pos vía getWorldPosition).
+        const ctrl2 = makeCtrlAt(0.5, 1.4, -0.2);
+        dragOneFrame(ball, ctrl2);
+        expect(ball.mesh.position.x).toBe(0.5);
+        expect(ball.mesh.position.y).toBe(1.4);
+        expect(ball.mesh.position.z).toBe(-0.2);
+    });
+
+    it('drag durante 30 frames con mando que se mueve en círculo', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+
+        for (let i = 0; i < 30; i++) {
+            const angle = (i / 30) * Math.PI * 2;
+            const x = 0.5 * Math.cos(angle);
+            const z = 0.5 * Math.sin(angle);
+            const ctrl = makeCtrlAt(x, 1.2, z);
+            dragOneFrame(ball, ctrl);
+            expect(ball.mesh.position.x).toBeCloseTo(x, 5);
+            expect(ball.mesh.position.z).toBeCloseTo(z, 5);
+        }
+    });
+});
+
 describe('Bola verde — drag con cambios de posición rápidos del mando', () => {
     const PLAYER = { x: 0, y: 1.6, z: 0 };
 
