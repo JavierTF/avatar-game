@@ -1079,6 +1079,101 @@ describe('Bola verde — grab pega la bola al mando (NO auto-drop inmediato)', (
     });
 });
 
+describe('Bola verde — flujo integrado: grab + drag + drop (regresión completa)', () => {
+    const PLAYER = { x: 0, y: 1.6, z: 0 };
+
+    // Simula un frame del render loop real: asigna ctrlPos, trackea altura,
+    // ejecuta _moveBall (que es lo que copia ctrlPos a mesh.position).
+    function simFrame(bm, ball, ctrlPos, now) {
+        ball.ctrlPos = ctrlPos;
+        bm.trackHeightAndMaybeDrop(ball, ctrlPos.y, now);
+        bm._moveBall(ball, 0.016, PLAYER);
+    }
+
+    it('grab a chest height + drag SIEMPRE bajo 1.5m → la bola SIGUE al mando (no drop)', () => {
+        const { bm, ball } = makeGreenBallAt(0.1, 1.2, -0.1);
+        const grabbed = bm.tryGrabGreen(makeCtrlAt(0.1, 1.2, -0.1), 1, false);
+        expect(grabbed).toBe(ball);
+        expect(ball.grabbed).toBe(true);
+        expect(ball.mesh.visible).not.toBe(false);  // visible al hacer grab
+
+        // 30 frames simulando movimiento del mando, todos con y < 1.5.
+        const path = [];
+        for (let i = 0; i < 30; i++) {
+            path.push({ x: 0.1 + i * 0.01, y: 1.0 + (i % 5) * 0.05, z: -0.1 - i * 0.005 });
+        }
+        for (let i = 0; i < path.length; i++) {
+            simFrame(bm, ball, path[i], 1000 + i * 16);
+            expect(ball.mesh.position.x).toBe(path[i].x);
+            expect(ball.mesh.position.y).toBe(path[i].y);
+            expect(ball.mesh.position.z).toBe(path[i].z);
+            expect(ball._autoDropAt).toBeFalsy();
+            expect(ball.grabbed).toBe(true);
+        }
+    });
+
+    it('grab + raise (>1.5) + lower (<1.5) + 1s → muro en el suelo', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        bm.tryGrabGreen(makeCtrlAt(0, 1.2, 0), 1, false);
+
+        // Drag inicial chest height.
+        simFrame(bm, ball, { x: 0,    y: 1.2, z: 0 },    1000);
+        expect(ball._autoDropAt).toBeFalsy();
+
+        // Levanta el mando.
+        simFrame(bm, ball, { x: 0,    y: 1.7, z: 0 },    1050);
+        expect(ball._wasAboveThreshold).toBe(true);
+        expect(ball._autoDropAt).toBeFalsy();
+
+        // Baja a chest height de nuevo (cruza 1.5 hacia abajo).
+        simFrame(bm, ball, { x: 0.3,  y: 1.4, z: -0.2 }, 1100);
+        expect(ball._autoDropAt).toBe(2100);
+        expect(ball.mesh.visible).toBe(false);
+
+        // Bm.update tras 1s → muro aparece en el suelo.
+        bm.update(0.016, PLAYER, 2101);
+        expect(ball._wall).toBe(true);
+        expect(ball.mesh.visible).toBe(true);
+        expect(ball.mesh.position.x).toBeCloseTo(0.3);
+        expect(ball.mesh.position.z).toBeCloseTo(-0.2);
+        expect(ball.mesh.position.y).toBeCloseTo(0.15, 2);
+    });
+});
+
+describe('Bola verde — releaseGrabbedIfNotScheduled (selectend sin auto-drop)', () => {
+    it('libera bola agarrada sin auto-drop pendiente: grabbed→false, ctrlPos→null', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball.ctrlPos = { x: 0.5, y: 1.3, z: -0.2 };
+        ball._wasAboveThreshold = true;
+
+        bm.releaseGrabbedIfNotScheduled(ball);
+
+        expect(ball.grabbed).toBe(false);
+        expect(ball.ctrlPos).toBe(null);
+        expect(ball._wasAboveThreshold).toBeFalsy();
+    });
+
+    it('NO libera si hay auto-drop pendiente (preserva el flujo del drop)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball.ctrlPos = { x: 0.5, y: 1.3, z: -0.2 };
+        ball._autoDropAt = 5000;
+
+        bm.releaseGrabbedIfNotScheduled(ball);
+
+        expect(ball.grabbed).toBe(true);     // sigue agarrada
+        expect(ball._autoDropAt).toBe(5000); // timer intacto
+    });
+
+    it('no-op si la bola no estaba agarrada', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = false;
+        expect(() => bm.releaseGrabbedIfNotScheduled(ball)).not.toThrow();
+        expect(ball.grabbed).toBe(false);
+    });
+});
+
 describe('Bola verde — trackHeightAndMaybeDrop (transición arriba→abajo)', () => {
     const PLAYER = { x: 0, y: 1.6, z: 0 };
 

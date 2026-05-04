@@ -133,6 +133,18 @@ export class BallManager {
         }
     }
 
+    // Si el jugador suelta el gatillo SIN haber triggerado el auto-drop
+    // (no llegó a bajar bajo 1.5m tras estar arriba), liberamos el grab
+    // para que la bola no se quede "stuck" en el aire. Vuelve a estado
+    // libre y continuará con su velocity (saldrá detrás del jugador y
+    // será eliminada normalmente).
+    releaseGrabbedIfNotScheduled(ball) {
+        if (!ball.grabbed || ball._autoDropAt) return;
+        ball.grabbed = false;
+        ball.ctrlPos = null;
+        ball._wasAboveThreshold = false;
+    }
+
     // Aplica el auto-drop a una bola cuyo timer ya expiró: la coloca en el
     // suelo, la marca como muro, la hace visible.
     _commitAutoDrop(ball) {

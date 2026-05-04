@@ -93,15 +93,16 @@ async function init() {
 
     c1.addEventListener('selectstart', () => { held1 = true; _tryGrabGreen(c1, 1); });
     c1.addEventListener('selectend',   () => {
-        // El drop ya no requiere release del trigger: la bola se auto-coloca
-        // 1s tras el grab. Sólo libramos el slot del mando para permitir
-        // grabs consecutivos.
         held1 = false;
+        // Si la bola seguía agarrada sin haber triggereado el auto-drop,
+        // la liberamos para que no quede stuck en el aire.
+        if (grabbedBall1) balls.releaseGrabbedIfNotScheduled(grabbedBall1);
         grabbedBall1 = null;
     });
     c2.addEventListener('selectstart', () => { held2 = true; _tryGrabGreen(c2, 2); });
     c2.addEventListener('selectend',   () => {
         held2 = false;
+        if (grabbedBall2) balls.releaseGrabbedIfNotScheduled(grabbedBall2);
         grabbedBall2 = null;
     });
 
