@@ -234,78 +234,17 @@ describe('BallManager — muro de verdes', () => {
         expect(m.balls.length).toBe(1);
     });
 
-    it('una roja tocando el muro destruye TODO el muro y la bola atacante', () => {
+    it('una roja superpuesta sobre la verde dropeada NO la elimina (sin destrucción)', () => {
         const m = makeManager(1);
-        const w1 = m.spawn('green', { x: 0, y: 1.6, z: 0 });
-        const w2 = m.spawn('green', { x: 0, y: 1.6, z: 0 });
-        const w3 = m.spawn('green', { x: 0, y: 1.6, z: 0 });
-        w1._wall = true; w1.mesh.position.set(-0.6, 0.2, -1.5);
-        w2._wall = true; w2.mesh.position.set( 0.0, 0.2, -1.5);
-        w3._wall = true; w3.mesh.position.set( 0.6, 0.2, -1.5);
-
+        const w = m.spawn('green', { x: 0, y: 1.6, z: 0 });
+        w._wall = true; w.mesh.position.set(0, 0.2, -1.5);
         const r = m.spawn('red', { x: 0, y: 1.6, z: 0 });
-        r.mesh.position.set(0, 0.2, -1.5);  // colisiona con w2
+        r.mesh.position.set(0, 0.2, -1.5);
         r.velocity.set(0, 0, 0);
 
-        m._checkWallCollisions();
-        // Los 3 bloques del muro + la roja → todos eliminados
-        expect(m.balls.length).toBe(0);
-    });
+        m.update(0.016, { x: 0, y: 1.6, z: 0 });
 
-    it('onWallHit se dispara con el punto de impacto', () => {
-        const m = makeManager(1);
-        let impactPos = null;
-        m.onWallHit = (p) => { impactPos = p; };
-
-        const w = m.spawn('green', { x: 0, y: 1.6, z: 0 });
-        w._wall = true; w.mesh.position.set(0, 0.2, -1.5);
-        const r = m.spawn('red', { x: 0, y: 1.6, z: 0 });
-        r.mesh.position.set(0, 0.2, -1.5);
-
-        m._checkWallCollisions();
-        expect(impactPos).not.toBeNull();
-        expect(impactPos.x).toBe(0);
-        expect(impactPos.z).toBe(-1.5);
-    });
-
-    it('una roja lejos del muro NO lo destruye', () => {
-        const m = makeManager(1);
-        const w = m.spawn('green', { x: 0, y: 1.6, z: 0 });
-        w._wall = true; w.mesh.position.set(0, 0.2, -1.5);
-        const r = m.spawn('red', { x: 0, y: 1.6, z: 0 });
-        r.mesh.position.set(2, 0.2, -1.5);  // lejos en X
-        m._checkWallCollisions();
-        expect(m.balls.length).toBe(2);
-    });
-
-    it('si no hay muro, _checkWallCollisions no hace nada', () => {
-        const m = makeManager(1);
-        const r = m.spawn('red', { x: 0, y: 1.6, z: 0 });
-        r.mesh.position.set(0, 0.2, 0);
-        let called = 0;
-        m.onWallHit = () => { called++; };
-        m._checkWallCollisions();
-        expect(called).toBe(0);
-        expect(m.balls.length).toBe(1);
-    });
-});
-
-describe('BallManager — destrucción del muro', () => {
-    it('al destruirse el muro, todos los ladrillos verdes se eliminan', () => {
-        const m = makeManager(1);
-        const player = { x: 0, y: 1.6, z: 0 };
-
-        const w1 = m.spawn('green', player);
-        w1._wall = true;
-        w1.mesh.position.set(0, 0.2, -1.5);
-        const w2 = m.spawn('green', player);
-        w2._wall = true;
-        w2.mesh.position.set(0.3, 0.2, -1.5);
-
-        const r = m.spawn('red', player);
-        r.mesh.position.set(0, 0.2, -1.5);
-        m._checkWallCollisions();
-
-        expect(m.balls.filter(b => b._wall).length).toBe(0);
+        expect(m.balls.includes(w)).toBe(true);
+        expect(w._wall).toBe(true);
     });
 });
