@@ -121,6 +121,18 @@ export class BallManager {
         };
     }
 
+    // Trackea la altura del mando para una bola agarrada y dispara el
+    // auto-drop sólo en la transición arriba→abajo (>1.5m → <1.5m). Si el
+    // mando nunca estuvo arriba, NO dispara aunque esté abajo (evita drop
+    // espurio al hacer grab a chest height típico).
+    trackHeightAndMaybeDrop(ball, currentY, now = Date.now()) {
+        if (!ball.grabbed || ball._autoDropAt) return;
+        if (currentY > 1.5) ball._wasAboveThreshold = true;
+        if (ball._wasAboveThreshold && currentY < 1.5) {
+            this.scheduleAutoDrop(ball, now);
+        }
+    }
+
     // Aplica el auto-drop a una bola cuyo timer ya expiró: la coloca en el
     // suelo, la marca como muro, la hace visible.
     _commitAutoDrop(ball) {

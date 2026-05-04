@@ -304,13 +304,14 @@ function renderLoop() {
     const gData = gestures.update(delta, c1, c2);
     if (grabbedBall1) {
         grabbedBall1.ctrlPos = gData.pos1;
-        // Al bajar el mando por debajo de 1.5m → trigger del auto-drop:
-        // la bola se oculta del mando y aparece en el suelo 1s después.
-        if (gData.pos1.y < 1.5) balls.scheduleAutoDrop(grabbedBall1);
+        // Trigger del auto-drop sólo en la transición arriba→abajo: el mando
+        // tuvo que estar por encima de 1.5m al menos una vez antes de bajar.
+        // Evita disparo espurio cuando el grab ocurre a chest height típico.
+        balls.trackHeightAndMaybeDrop(grabbedBall1, gData.pos1.y);
     }
     if (grabbedBall2) {
         grabbedBall2.ctrlPos = gData.pos2;
-        if (gData.pos2.y < 1.5) balls.scheduleAutoDrop(grabbedBall2);
+        balls.trackHeightAndMaybeDrop(grabbedBall2, gData.pos2.y);
     }
 
     balls.update(delta, _camPos);

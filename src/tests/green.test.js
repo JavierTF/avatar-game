@@ -1079,6 +1079,65 @@ describe('Bola verde — grab pega la bola al mando (NO auto-drop inmediato)', (
     });
 });
 
+describe('Bola verde — trackHeightAndMaybeDrop (transición arriba→abajo)', () => {
+    const PLAYER = { x: 0, y: 1.6, z: 0 };
+
+    it('mando siempre arriba (y > 1.5): NO triggerea drop', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball.ctrlPos = { x: 0, y: 1.7, z: -0.5 };
+        bm.trackHeightAndMaybeDrop(ball, 1.7, 1000);
+        bm.trackHeightAndMaybeDrop(ball, 1.8, 1100);
+        expect(ball._autoDropAt).toBeFalsy();
+        expect(ball.mesh.visible).not.toBe(false);
+    });
+
+    it('mando siempre abajo (y < 1.5) sin haber estado arriba: NO triggerea drop', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball.ctrlPos = { x: 0, y: 1.2, z: -0.5 };
+        // Aunque y < 1.5, nunca estuvo arriba → no dispara.
+        for (let i = 0; i < 20; i++) {
+            bm.trackHeightAndMaybeDrop(ball, 1.2, 1000 + i * 16);
+        }
+        expect(ball._autoDropAt).toBeFalsy();
+    });
+
+    it('transición arriba (>1.5) → abajo (<1.5): triggerea drop', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball.ctrlPos = { x: 0, y: 1.7, z: -0.5 };
+        bm.trackHeightAndMaybeDrop(ball, 1.7, 1000);
+        expect(ball._autoDropAt).toBeFalsy();  // todavía arriba
+
+        ball.ctrlPos = { x: 0, y: 1.4, z: -0.5 };
+        bm.trackHeightAndMaybeDrop(ball, 1.4, 1100);
+        expect(ball._autoDropAt).toBe(2100);  // ahora bajó → drop
+        expect(ball.mesh.visible).toBe(false);
+    });
+
+    it('múltiples transiciones: solo el primer cruce abajo dispara', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = true;
+        ball.ctrlPos = { x: 0, y: 1.6, z: 0 };
+        bm.trackHeightAndMaybeDrop(ball, 1.6, 1000);  // arriba
+        bm.trackHeightAndMaybeDrop(ball, 1.4, 1050);  // baja → drop
+        const firstAt = ball._autoDropAt;
+
+        bm.trackHeightAndMaybeDrop(ball, 1.7, 1100);  // sube de nuevo
+        bm.trackHeightAndMaybeDrop(ball, 1.3, 1200);  // baja otra vez
+        expect(ball._autoDropAt).toBe(firstAt);  // no cambia (idempotente)
+    });
+
+    it('no triggerea si la bola no está agarrada', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        ball.grabbed = false;  // libre
+        bm.trackHeightAndMaybeDrop(ball, 1.7, 1000);
+        bm.trackHeightAndMaybeDrop(ball, 1.2, 1100);
+        expect(ball._autoDropAt).toBeFalsy();
+    });
+});
+
 describe('Bola verde — scheduleAutoDrop al bajar el mando (y < 1.5m)', () => {
     const PLAYER = { x: 0, y: 1.6, z: 0 };
 
