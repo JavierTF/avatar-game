@@ -64,7 +64,17 @@ function makePlayer(overrides = {}) {
     return {
         vida: 5, maxVida: 5, mana: 50, puntos: 250, combo: 0, maxCombo: 5,
         manaGastado: 80, metros: 12.3,
+        metrosBrazoDch: 8.1, metrosBrazoIzq: 7.5,
+        velocidadMaxCabeza: 1.8, velocidadMediaCabeza: 0.4,
+        velocidadMaxBrazoDch: 2.5, velocidadMaxBrazoIzq: 2.3,
+        velocidadMediaBrazoDch: 0.6, velocidadMediaBrazoIzq: 0.5,
         agachadas: 4, saltos: 2, intensidad: 'medio',
+        desplazamientoLateral: 6.4, pctTiempoActivo: 55,
+        rangoVertical: 0.45, rangoHorizontalX: 1.8, rangoProfundidadZ: 1.2,
+        areaOcupada: 2.16, alturaPromedioCabeza: 1.62,
+        alturaMaxBrazoDch: 2.1, alturaMaxBrazoIzq: 2.0,
+        alcanceMaxBrazoDch: 0.8, alcanceMaxBrazoIzq: 0.75,
+        simetriaBrazos: 0.92,
         ...overrides,
     };
 }
@@ -75,7 +85,12 @@ function makeMetrics(overrides = {}) {
         blues:  { hit: 3, total: 4 },
         greens: { hit: 2, total: 3 },
         rachaMaxSinDaño: 6,
-        powers: {},
+        powers: {
+            escudo:  { used: 2, killed: 4 },
+            sismico: { used: 1, killed: 3 },
+            llama:   { used: 0, killed: 0 },
+            viento:  { used: 3, killed: 7 },
+        },
         ...overrides,
     };
 }
@@ -284,5 +299,166 @@ describe('FinalMetricsPanel — escala del sprite', () => {
         const sprite = scene._added[0];
         expect(sprite.scale.x).toBeGreaterThanOrEqual(1.5);
         expect(sprite.scale.y).toBeGreaterThanOrEqual(1.0);
+    });
+});
+
+// =============================================================================
+// MÉTRICAS COMPLETAS — el panel 3D debe mostrar TODAS las métricas que el
+// DOM HTML tradicionalmente mostraba (cuerpo/cabeza, brazos, poderes, etc).
+// =============================================================================
+describe('FinalMetricsPanel — métricas de cuerpo/cabeza', () => {
+    function spawnAndText(overrides) {
+        const scene = makeScene();
+        const panel = new FinalMetricsPanel(scene);
+        panel.show(makePlayer(overrides), 3, makeMetrics(), { x: 0, y: 1.6, z: 0 });
+        return _fakeCtx._texts.map(t => t.text).join(' ');
+    }
+
+    it('renderiza velocidad máxima de cabeza', () => {
+        const text = spawnAndText({ velocidadMaxCabeza: 2.7 });
+        expect(text).toContain('2.7');
+    });
+
+    it('renderiza velocidad media de cabeza', () => {
+        const text = spawnAndText({ velocidadMediaCabeza: 0.83 });
+        expect(text).toContain('0.83');
+    });
+
+    it('renderiza rango vertical Y', () => {
+        const text = spawnAndText({ rangoVertical: 0.67 });
+        expect(text.toLowerCase()).toContain('vertical');
+        expect(text).toContain('0.67');
+    });
+
+    it('renderiza rango horizontal X', () => {
+        const text = spawnAndText({ rangoHorizontalX: 2.3 });
+        expect(text.toLowerCase()).toContain('lateral');
+        expect(text).toContain('2.3');
+    });
+
+    it('renderiza rango de profundidad Z', () => {
+        const text = spawnAndText({ rangoProfundidadZ: 1.55 });
+        expect(text.toLowerCase()).toContain('profundidad');
+        expect(text).toContain('1.55');
+    });
+
+    it('renderiza área ocupada', () => {
+        const text = spawnAndText({ areaOcupada: 4.41 });
+        expect(text.toLowerCase()).toContain('área');
+        expect(text).toContain('4.41');
+    });
+
+    it('renderiza altura promedio de cabeza', () => {
+        const text = spawnAndText({ alturaPromedioCabeza: 1.65 });
+        expect(text.toLowerCase()).toContain('altura');
+        expect(text).toContain('1.65');
+    });
+
+    it('renderiza desplazamiento lateral total', () => {
+        const text = spawnAndText({ desplazamientoLateral: 9.4 });
+        expect(text.toLowerCase()).toContain('desplazamiento');
+        expect(text).toContain('9.4');
+    });
+
+    it('renderiza % tiempo en movimiento', () => {
+        const text = spawnAndText({ pctTiempoActivo: 73 });
+        expect(text).toContain('73');
+        expect(text).toMatch(/%|movimiento/i);
+    });
+});
+
+describe('FinalMetricsPanel — métricas de brazos', () => {
+    function spawnAndText(overrides) {
+        const scene = makeScene();
+        const panel = new FinalMetricsPanel(scene);
+        panel.show(makePlayer(overrides), 3, makeMetrics(), { x: 0, y: 1.6, z: 0 });
+        return _fakeCtx._texts.map(t => t.text).join(' ');
+    }
+
+    it('renderiza distancia recorrida por brazo derecho', () => {
+        const text = spawnAndText({ metrosBrazoDch: 12.3 });
+        expect(text).toContain('12.3');
+    });
+
+    it('renderiza distancia recorrida por brazo izquierdo', () => {
+        const text = spawnAndText({ metrosBrazoIzq: 11.7 });
+        expect(text).toContain('11.7');
+    });
+
+    it('renderiza velocidad máxima brazo derecho', () => {
+        const text = spawnAndText({ velocidadMaxBrazoDch: 3.45 });
+        expect(text).toContain('3.45');
+    });
+
+    it('renderiza velocidad máxima brazo izquierdo', () => {
+        const text = spawnAndText({ velocidadMaxBrazoIzq: 3.21 });
+        expect(text).toContain('3.21');
+    });
+
+    it('renderiza altura máxima brazo derecho', () => {
+        const text = spawnAndText({ alturaMaxBrazoDch: 2.45 });
+        expect(text).toContain('2.45');
+    });
+
+    it('renderiza altura máxima brazo izquierdo', () => {
+        const text = spawnAndText({ alturaMaxBrazoIzq: 2.31 });
+        expect(text).toContain('2.31');
+    });
+
+    it('renderiza alcance máximo brazo derecho', () => {
+        const text = spawnAndText({ alcanceMaxBrazoDch: 0.92 });
+        expect(text.toLowerCase()).toContain('alcance');
+        expect(text).toContain('0.92');
+    });
+
+    it('renderiza alcance máximo brazo izquierdo', () => {
+        const text = spawnAndText({ alcanceMaxBrazoIzq: 0.87 });
+        expect(text).toContain('0.87');
+    });
+
+    it('renderiza simetría de brazos D/I', () => {
+        const text = spawnAndText({ simetriaBrazos: 0.85 });
+        expect(text.toLowerCase()).toContain('simetría');
+        expect(text).toContain('0.85');
+    });
+});
+
+describe('FinalMetricsPanel — tabla de poderes', () => {
+    function spawnAndText(metricsOverrides) {
+        const scene = makeScene();
+        const panel = new FinalMetricsPanel(scene);
+        panel.show(makePlayer(), 3, makeMetrics(metricsOverrides), { x: 0, y: 1.6, z: 0 });
+        return _fakeCtx._texts.map(t => t.text).join(' ').toLowerCase();
+    }
+
+    it('renderiza nombre y stats de cada poder (escudo, sismico, llama, viento)', () => {
+        const text = spawnAndText({
+            powers: {
+                escudo:  { used: 5, killed: 12 },
+                sismico: { used: 3, killed: 9 },
+                llama:   { used: 2, killed: 7 },
+                viento:  { used: 4, killed: 11 },
+            },
+        });
+        expect(text).toContain('escudo');
+        expect(text).toContain('sismico');
+        expect(text).toContain('llama');
+        expect(text).toContain('viento');
+    });
+
+    it('renderiza usos y eliminados de cada poder', () => {
+        const scene = makeScene();
+        const panel = new FinalMetricsPanel(scene);
+        panel.show(makePlayer(), 3, makeMetrics({
+            powers: {
+                escudo:  { used: 7, killed: 13 },
+                sismico: { used: 0, killed: 0 },
+                llama:   { used: 0, killed: 0 },
+                viento:  { used: 0, killed: 0 },
+            },
+        }), { x: 0, y: 1.6, z: 0 });
+        const text = _fakeCtx._texts.map(t => t.text).join(' ');
+        expect(text).toContain('7');
+        expect(text).toContain('13');
     });
 });
