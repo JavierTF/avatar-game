@@ -143,10 +143,6 @@ async function init() {
         document.getElementById('overlay').style.display = 'flex';
     });
 
-    document.getElementById('btn-role-instructor').addEventListener('click', () => {
-        window.location.href = '/instructor.html';
-    });
-
     document.getElementById('btn-vr').addEventListener('click', () => {
         sound.init();
         document.body.appendChild(VRButton.createButton(renderer));
