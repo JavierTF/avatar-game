@@ -31,7 +31,6 @@ export class BallManager {
         this._spawnTimer = 0;
         this.onBallSpawned = null;   // (type) => void
         this.onRedEscaped  = null;   // () => void
-        this.onWallHit     = null;   // (impactPos) => void
     }
 
     // Pesos de spawn. Las rojas (movimiento caótico + homing) son las más
@@ -81,8 +80,6 @@ export class BallManager {
                 this._remove(i);
             }
         }
-
-        this._checkWallCollisions();
     }
 
     // Intenta agarrar una verde en rango con el controlador `ctrl`. Si el
@@ -129,27 +126,6 @@ export class BallManager {
         ball.velocity.set(0, 0, 0);
         ball.mesh.position.copy(ctrlPos);
         return true;
-    }
-
-    // Si una roja toca CUALQUIER bloque del muro verde, todo el muro se
-    // destruye junto con esa bola atacante.
-    _checkWallCollisions() {
-        const walls = this.balls.filter(b => b._wall);
-        if (walls.length === 0) return;
-        const HIT_R = 0.40;
-        for (let i = this.balls.length - 1; i >= 0; i--) {
-            const d = this.balls[i];
-            if (d.type !== 'red' || d._wall || d._dropped) continue;
-            for (const w of walls) {
-                if (w.mesh.position.distanceTo(d.mesh.position) < HIT_R) {
-                    const impactPos = w.mesh.position.clone();
-                    if (this.onWallHit) this.onWallHit(impactPos);
-                    for (const wb of walls) this.remove(wb);
-                    this.remove(d);
-                    return;
-                }
-            }
-        }
     }
 
     spawn(type, playerPos) {

@@ -189,7 +189,6 @@ function startGame() {
 
     balls.onBallSpawned = (type) => metrics.ballSpawned(type);
     balls.onRedEscaped  = ()     => metrics.redEscaped();
-    balls.onWallHit     = ()     => sound.negative();
 
     collision.onRedHit = (hitPos) => {
         player.hit();
