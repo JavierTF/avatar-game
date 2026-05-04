@@ -1060,3 +1060,100 @@ describe('Bola verde — limpieza de recursos al eliminar', () => {
         expect(matDisposed).toBe(true);
     });
 });
+
+// =============================================================================
+// AUTO-DROP CON DELAY: al agarrar una verde, se oculta del mando y aparece
+// en el suelo 1 segundo después (x/z del mando al grab, y=0.15).
+// =============================================================================
+
+describe('Bola verde — auto-drop al suelo con delay de 1s', () => {
+    const PLAYER = { x: 0, y: 1.6, z: 0 };
+
+    it('tryGrabGreen oculta la bola y agenda auto-drop a 1000ms', () => {
+        const { bm, ball } = makeGreenBallAt(0.3, 1.4, -0.5);
+        const ctrl = makeCtrlAt(0.3, 1.4, -0.5);
+        const NOW = 1000;
+        const grabbed = bm.tryGrabGreen(ctrl, 1, false, NOW);
+
+        expect(grabbed).toBe(ball);
+        expect(ball.grabbed).toBe(true);
+        expect(ball.mesh.visible).toBe(false);  // oculta del mando inmediatamente
+        expect(ball._autoDropAt).toBe(NOW + 1000);
+        expect(ball._autoDropPos.x).toBeCloseTo(0.3);
+        expect(ball._autoDropPos.z).toBeCloseTo(-0.5);
+        expect(ball._autoDropPos.y).toBeCloseTo(0.15, 2);  // y de suelo
+    });
+
+    it('bm.update antes del delay (now < autoDropAt): la bola sigue oculta y no es muro', () => {
+        const { bm, ball } = makeGreenBallAt(0.3, 1.4, -0.5);
+        const ctrl = makeCtrlAt(0.3, 1.4, -0.5);
+        bm.tryGrabGreen(ctrl, 1, false, 1000);
+
+        bm.update(0.016, PLAYER, 1500);  // 500ms después, falta otro 500ms
+        expect(ball.mesh.visible).toBe(false);
+        expect(ball._wall).toBeFalsy();
+        expect(ball.grabbed).toBe(true);
+        expect(ball._autoDropAt).toBe(2000);  // sigue agendado
+    });
+
+    it('bm.update tras el delay (now >= autoDropAt): la bola aparece en el suelo como muro', () => {
+        const { bm, ball } = makeGreenBallAt(0.3, 1.4, -0.5);
+        const ctrl = makeCtrlAt(0.3, 1.4, -0.5);
+        bm.tryGrabGreen(ctrl, 1, false, 1000);
+
+        bm.update(0.016, PLAYER, 2001);  // 1ms después del delay
+
+        expect(ball.mesh.visible).toBe(true);
+        expect(ball._wall).toBe(true);
+        expect(ball.grabbed).toBe(false);
+        expect(ball._autoDropAt).toBeFalsy();  // limpiado
+        // Posición: x/z del mando al grab, y=0.15.
+        expect(ball.mesh.position.x).toBeCloseTo(0.3);
+        expect(ball.mesh.position.z).toBeCloseTo(-0.5);
+        expect(ball.mesh.position.y).toBeCloseTo(0.15, 2);
+    });
+
+    it('exactamente en el límite (now == autoDropAt): aparece en el suelo', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const ctrl = makeCtrlAt(0, 1.2, 0);
+        bm.tryGrabGreen(ctrl, 1, false, 1000);
+
+        bm.update(0.016, PLAYER, 2000);  // exactamente
+        expect(ball._wall).toBe(true);
+        expect(ball.mesh.visible).toBe(true);
+    });
+
+    it('multiples updates tras el drop: no re-dispara (autoDropAt limpiado)', () => {
+        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
+        const ctrl = makeCtrlAt(0, 1.2, 0);
+        bm.tryGrabGreen(ctrl, 1, false, 1000);
+
+        bm.update(0.016, PLAYER, 2001);  // primer update tras delay → drop
+        const xTrasDrop = ball.mesh.position.x;
+        bm.update(0.016, PLAYER, 5000);  // 3s después → debe ser idempotente
+
+        expect(ball.mesh.position.x).toBe(xTrasDrop);
+        expect(ball._wall).toBe(true);
+    });
+
+    it('dos verdes agarradas tienen drops independientes', () => {
+        const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
+        const ballA = bm.spawn('green', PLAYER); ballA.mesh.position.set(-0.3, 1.2, 0);
+        const ballB = bm.spawn('green', PLAYER); ballB.mesh.position.set( 0.3, 1.2, 0);
+
+        bm.tryGrabGreen(makeCtrlAt(-0.3, 1.2, 0), 1, false, 1000);
+        bm.tryGrabGreen(makeCtrlAt( 0.3, 1.2, 0), 2, false, 1500);  // 500ms después
+
+        // En t=2050: A ya cumplió delay (>2000), B aún no (<2500).
+        bm.update(0.016, PLAYER, 2050);
+        expect(ballA._wall).toBe(true);
+        expect(ballA.mesh.visible).toBe(true);
+        expect(ballB._wall).toBeFalsy();
+        expect(ballB.mesh.visible).toBe(false);
+
+        // En t=2600: B también cumple.
+        bm.update(0.016, PLAYER, 2600);
+        expect(ballB._wall).toBe(true);
+        expect(ballB.mesh.visible).toBe(true);
+    });
+});

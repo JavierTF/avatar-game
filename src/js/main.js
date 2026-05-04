@@ -93,13 +93,16 @@ async function init() {
 
     c1.addEventListener('selectstart', () => { held1 = true; _tryGrabGreen(c1, 1); });
     c1.addEventListener('selectend',   () => {
+        // El drop ya no requiere release del trigger: la bola se auto-coloca
+        // 1s tras el grab. Sólo libramos el slot del mando para permitir
+        // grabs consecutivos.
         held1 = false;
-        if (grabbedBall1) { _activateGreen(grabbedBall1, c1); grabbedBall1 = null; }
+        grabbedBall1 = null;
     });
     c2.addEventListener('selectstart', () => { held2 = true; _tryGrabGreen(c2, 2); });
     c2.addEventListener('selectend',   () => {
         held2 = false;
-        if (grabbedBall2) { _activateGreen(grabbedBall2, c2); grabbedBall2 = null; }
+        grabbedBall2 = null;
     });
 
     clock = new THREE.Clock();

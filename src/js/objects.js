@@ -52,12 +52,17 @@ export class BallManager {
         return pool[Math.floor(Math.random() * pool.length)];
     }
 
-    update(delta, playerPos) {
+    update(delta, playerPos, now = Date.now()) {
         const rate = this.difficulty.spawnRate();
         this._spawnTimer += delta;
         if (this._spawnTimer >= rate) {
             this._spawnTimer = 0;
             this.spawn(this._pickType(), playerPos);
+        }
+
+        // Auto-drop: bolas verdes con timer expirado caen al suelo como muro.
+        for (const b of this.balls) {
+            if (b._autoDropAt && now >= b._autoDropAt) this._commitAutoDrop(b);
         }
 
         for (let i = this.balls.length - 1; i >= 0; i--) {
@@ -83,9 +88,12 @@ export class BallManager {
     }
 
     // Intenta agarrar una verde en rango con el controlador `ctrl`. Si el
-    // mando ya tiene una bola (alreadyGrabbed=true), no agarra nada para
-    // evitar dejar la anterior huérfana. Devuelve la bola agarrada o null.
-    tryGrabGreen(ctrl, idx, alreadyGrabbed) {
+    // mando ya tiene una bola (alreadyGrabbed=true), no agarra nada.
+    // En éxito: oculta la bola del mando inmediatamente y agenda un
+    // auto-drop al suelo 1 segundo después en (ctrl.x, 0.15, ctrl.z). Hace
+    // que el jugador no tenga que apuntar — toca trigger cerca y aparece
+    // un muro en el suelo automáticamente. Devuelve la bola o null.
+    tryGrabGreen(ctrl, idx, alreadyGrabbed, now = Date.now()) {
         if (alreadyGrabbed) return null;
         const cp = new THREE.Vector3();
         ctrl.getWorldPosition(cp);
@@ -95,10 +103,29 @@ export class BallManager {
                 ball.grabbed = true;
                 ball.ctrlPos = cp.clone();
                 ball.mesh.position.copy(cp);
+                ball.mesh.visible = false;             // oculta del mando
+                ball._autoDropAt  = now + 1000;        // 1s de delay
+                ball._autoDropPos = { x: cp.x, y: 0.15, z: cp.z };
                 return ball;
             }
         }
         return null;
+    }
+
+    // Aplica el auto-drop a una bola cuyo timer ya expiró: la coloca en el
+    // suelo, la marca como muro, la hace visible.
+    _commitAutoDrop(ball) {
+        ball.mesh.position.set(
+            ball._autoDropPos.x,
+            ball._autoDropPos.y,
+            ball._autoDropPos.z,
+        );
+        ball.mesh.visible = true;
+        ball._wall        = true;
+        ball.grabbed      = false;
+        ball.ctrlPos      = null;
+        ball._autoDropAt  = null;
+        ball._autoDropPos = null;
     }
 
     // Convierte una bola verde agarrada en un ladrillo del muro, si el
