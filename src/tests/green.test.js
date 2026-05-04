@@ -521,10 +521,10 @@ describe('Bola verde — drop como muro tras agarrar', () => {
         expect(bm.balls.includes(ball)).toBe(false);
     });
 
-    it('mando demasiado cerca del jugador (frontDist < 0.2m): la bola se descarta', () => {
+    it('mando demasiado cerca del jugador (frontDist < 0.5m): la bola se descarta', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        const dropPos = { x: 0, y: 0.2, z: -0.1 };  // sólo 0.1m delante: pegada a los pies
+        const dropPos = { x: 0, y: 0.2, z: -0.3 };  // sólo 0.3m delante: pegada a los pies
 
         const ok = bm.dropAsWall(ball, dropPos, PLAYER);
 
@@ -544,17 +544,17 @@ describe('Bola verde — drop como muro tras agarrar', () => {
         expect(bm.balls.includes(ball)).toBe(false);
     });
 
-    it('justo en el límite y=1.5 y frontDist=0.2: válido (los límites son INclusivos)', () => {
+    it('justo en el límite y=1.5 y frontDist=0.5: válido (los límites son INclusivos)', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        const dropPos = { x: 0, y: 1.5, z: -0.2 };
+        const dropPos = { x: 0, y: 1.5, z: -0.5 };
 
         const ok = bm.dropAsWall(ball, dropPos, PLAYER);
 
         expect(ok).toBe(true);
         expect(ball._wall).toBe(true);
         expect(ball.mesh.position.y).toBe(1.5);
-        expect(ball.mesh.position.z).toBe(-0.2);
+        expect(ball.mesh.position.z).toBe(-0.5);
     });
 
     it('dropAsWall lanza si la bola no está agarrada (contrato explícito)', () => {
@@ -654,9 +654,11 @@ describe('Bola verde — flujo completo end-to-end', () => {
     const PLAYER = { x: 0, y: 1.6, z: 0 };
     const cam    = { matrixWorld: { ...PLAYER } };
 
-    it('spawn → grab → drag (4 puntos) → drop válido → permanece estática indefinidamente', () => {
+    it('spawn → grab → drag (4 puntos) → drop como muro → red destruye → onWallHit', () => {
         const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
         const collision = new CollisionSystem(makePlayer(), bm);
+        let wallHits = 0, wallHitPos = null;
+        bm.onWallHit = (p) => { wallHits++; wallHitPos = p; };
 
         // 1) SPAWN ─ estado inicial limpio
         const ball = bm.spawn('green', PLAYER);
@@ -692,7 +694,7 @@ describe('Bola verde — flujo completo end-to-end', () => {
             expect(ball.mesh.position.z).toBe(p.z);
         }
 
-        // 4) DROP ─ mando bajo y delante → la bola se queda en el suelo
+        // 4) DROP ─ mando bajo y delante → muro válido en la última posición
         const ok = bm.dropAsWall(ball, { x: 0.7, y: 0.2, z: -1.0 }, PLAYER);
         expect(ok).toBe(true);
         expect(ball._wall).toBe(true);
@@ -702,21 +704,28 @@ describe('Bola verde — flujo completo end-to-end', () => {
         expect(ball.velocity.y).toBe(0);
         expect(ball.velocity.z).toBe(0);
 
-        // 5) PERSISTE ─ aunque pase mucho tiempo y haya rojas alrededor, la
-        // bola dropeada permanece visible (sin destrucción por rojas).
+        // 5) PERSISTE ─ 20 frames de update, el muro no se mueve ni se elimina
         for (let i = 0; i < 20; i++) bm.update(0.016, PLAYER);
-        const red = bm.spawn('red', PLAYER);
-        red.mesh.position.set(0.7, 0.2, -1.0);  // sobre la verde
-        bm.update(0.016, PLAYER);
-
         expect(bm.balls.includes(ball)).toBe(true);
         expect(ball._wall).toBe(true);
         expect(ball.mesh.position.x).toBe(0.7);
         expect(ball.mesh.position.y).toBe(0.2);
         expect(ball.mesh.position.z).toBe(-1.0);
+
+        // 6) DESTRUCCIÓN ─ una roja toca el muro → ambos eliminados, callback con pos
+        const red = bm.spawn('red', PLAYER);
+        red.mesh.position.set(0.7, 0.2, -1.0);
+        bm._checkWallCollisions();
+
+        expect(bm.balls.includes(ball)).toBe(false);
+        expect(bm.balls.includes(red)).toBe(false);
+        expect(wallHits).toBe(1);
+        expect(wallHitPos.x).toBe(0.7);
+        expect(wallHitPos.y).toBe(0.2);
+        expect(wallHitPos.z).toBe(-1.0);
     });
 
-    it('spawn → grab → drop con mando alto → bola descartada', () => {
+    it('spawn → grab → drop con mando alto → bola descartada (sin muro fantasma)', () => {
         const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
         const ball = bm.spawn('green', PLAYER);
         ball.mesh.position.set(0, 1.4, -0.5);
@@ -728,6 +737,10 @@ describe('Bola verde — flujo completo end-to-end', () => {
         expect(ok).toBe(false);
         expect(ball._wall).toBeFalsy();
         expect(bm.balls.includes(ball)).toBe(false);
+
+        // No hay muro fantasma: _checkWallCollisions no encuentra walls
+        bm._checkWallCollisions();
+        expect(bm.balls.filter(b => b._wall).length).toBe(0);
     });
 });
 
@@ -834,20 +847,20 @@ describe('Bola verde — boundaries estrictos del drop (WALL_MAX_Y, WALL_MIN_FRO
         expect(ok).toBe(false);
     });
 
-    it('frontDist EXACTAMENTE 0.2 → válido (la condición es frontDist < 0.2)', () => {
+    it('frontDist EXACTAMENTE 0.5 → válido (la condición es frontDist < 0.5)', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        // playerPos.z=0, ctrlPos.z=-0.2 → frontDist = 0 - (-0.2) = 0.2
-        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.2 }, PLAYER);
+        // playerPos.z=0, ctrlPos.z=-0.5 → frontDist = 0 - (-0.5) = 0.5
+        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.5 }, PLAYER);
         expect(ok).toBe(true);
         expect(ball._wall).toBe(true);
-        expect(ball.mesh.position.z).toBe(-0.2);
+        expect(ball.mesh.position.z).toBe(-0.5);
     });
 
-    it('frontDist justo por debajo (0.19999) → descartado', () => {
+    it('frontDist justo por debajo (0.49999) → descartado', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.19999 }, PLAYER);
+        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.49999 }, PLAYER);
         expect(ok).toBe(false);
     });
 });
@@ -955,41 +968,70 @@ describe('Bola verde — persistencia del muro tras drop válido', () => {
     });
 });
 
-// La mecánica antigua "una roja toca el muro y lo destruye" se eliminó —
-// ahora la bola dropeada es decoración estática permanente, no un muro
-// destructible. Los tests de _checkWallCollisions / onWallHit se borraron.
-
-describe('Bola verde — la bola dropeada es estática y permanente (no destruible)', () => {
+describe('Bola verde — destrucción del muro por roja', () => {
     const PLAYER = { x: 0, y: 1.6, z: 0 };
 
-    function placeDropped(bm, x, y, z) {
+    function placeWall(bm, x, y, z) {
         const w = bm.spawn('green', PLAYER);
         w.grabbed = true;
         bm.dropAsWall(w, { x, y, z }, PLAYER);
         return w;
     }
 
-    it('una roja superpuesta sobre la verde dropeada NO la elimina', () => {
+    it('onWallHit recibe la posición del MURO impactado (no la del red)', () => {
         const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
-        const w  = placeDropped(bm, 0, 0.2, -1);
+        const w = placeWall(bm, 0.7, 0.3, -1.5);
+        let impactPos = null;
+        bm.onWallHit = (pos) => { impactPos = pos; };
+
         const red = bm.spawn('red', PLAYER);
+        red.mesh.position.set(0.6, 0.25, -1.45);  // cerca pero no exacto
+        bm._checkWallCollisions();
+
+        expect(impactPos).not.toBeNull();
+        expect(impactPos.x).toBe(0.7);
+        expect(impactPos.y).toBe(0.3);
+        expect(impactPos.z).toBe(-1.5);
+    });
+
+    it('una roja con _dropped (caída por poder) NO destruye el muro', () => {
+        const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
+        const w = placeWall(bm, 0, 0.2, -1);
+        const red = bm.spawn('red', PLAYER);
+        red._dropped = true;
         red.mesh.position.set(0, 0.2, -1);
 
-        bm.update(0.016, PLAYER);
+        bm._checkWallCollisions();
 
         expect(bm.balls.includes(w)).toBe(true);
         expect(w._wall).toBe(true);
+        expect(bm.balls.includes(red)).toBe(true);
     });
 
-    it('múltiples verdes dropeadas conviven (no se destruyen entre sí)', () => {
+    it('roja a más de HIT_R (>0.40) del muro NO lo destruye', () => {
         const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
-        placeDropped(bm, -1, 0.2, -1);
-        placeDropped(bm,  0, 0.2, -1);
-        placeDropped(bm,  1, 0.2, -1);
+        const w = placeWall(bm, 0, 0.2, -1);
+        const red = bm.spawn('red', PLAYER);
+        red.mesh.position.set(0.5, 0.2, -1);  // dx=0.5 > HIT_R=0.40
 
-        bm.update(0.016, PLAYER);
+        bm._checkWallCollisions();
+        expect(bm.balls.includes(w)).toBe(true);
+        expect(bm.balls.includes(red)).toBe(true);
+    });
 
+    it('una roja tocando UN muro destruye TODOS los muros existentes', () => {
+        const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
+        placeWall(bm, -1, 0.2, -1);
+        placeWall(bm,  0, 0.2, -1);
+        placeWall(bm,  1, 0.2, -1);
         expect(bm.balls.filter(b => b._wall).length).toBe(3);
+
+        const red = bm.spawn('red', PLAYER);
+        red.mesh.position.set(0, 0.2, -1);
+        bm._checkWallCollisions();
+
+        expect(bm.balls.filter(b => b._wall).length).toBe(0);
+        expect(bm.balls.includes(red)).toBe(false);
     });
 });
 
