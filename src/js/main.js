@@ -302,8 +302,16 @@ function renderLoop() {
     // la posición fresca del mando ANTES de que balls.update llame a _moveBall —
     // así la bola sigue al mando sin un frame de retraso.
     const gData = gestures.update(delta, c1, c2);
-    if (grabbedBall1) grabbedBall1.ctrlPos = gData.pos1;
-    if (grabbedBall2) grabbedBall2.ctrlPos = gData.pos2;
+    if (grabbedBall1) {
+        grabbedBall1.ctrlPos = gData.pos1;
+        // Al bajar el mando por debajo de 1.5m → trigger del auto-drop:
+        // la bola se oculta del mando y aparece en el suelo 1s después.
+        if (gData.pos1.y < 1.5) balls.scheduleAutoDrop(grabbedBall1);
+    }
+    if (grabbedBall2) {
+        grabbedBall2.ctrlPos = gData.pos2;
+        if (gData.pos2.y < 1.5) balls.scheduleAutoDrop(grabbedBall2);
+    }
 
     balls.update(delta, _camPos);
     handlePowers(gData);

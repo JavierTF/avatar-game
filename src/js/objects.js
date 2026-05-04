@@ -89,11 +89,8 @@ export class BallManager {
 
     // Intenta agarrar una verde en rango con el controlador `ctrl`. Si el
     // mando ya tiene una bola (alreadyGrabbed=true), no agarra nada.
-    // En éxito: oculta la bola del mando inmediatamente y agenda un
-    // auto-drop al suelo 1 segundo después en (ctrl.x, 0.15, ctrl.z). Hace
-    // que el jugador no tenga que apuntar — toca trigger cerca y aparece
-    // un muro en el suelo automáticamente. Devuelve la bola o null.
-    tryGrabGreen(ctrl, idx, alreadyGrabbed, now = Date.now()) {
+    // En éxito: la bola se pega al mando (visible, sigue al mando vía drag).
+    tryGrabGreen(ctrl, idx, alreadyGrabbed) {
         if (alreadyGrabbed) return null;
         const cp = new THREE.Vector3();
         ctrl.getWorldPosition(cp);
@@ -103,13 +100,25 @@ export class BallManager {
                 ball.grabbed = true;
                 ball.ctrlPos = cp.clone();
                 ball.mesh.position.copy(cp);
-                ball.mesh.visible = false;             // oculta del mando
-                ball._autoDropAt  = now + 1000;        // 1s de delay
-                ball._autoDropPos = { x: cp.x, y: 0.15, z: cp.z };
                 return ball;
             }
         }
         return null;
+    }
+
+    // Agenda el auto-drop al suelo: oculta la bola del mando inmediatamente y
+    // la hace aparecer 1s después en el suelo (x/z del ctrlPos actual, y=0.15).
+    // Idempotente: si ya estaba agendada, ignora. Lo dispara main.js cuando el
+    // mando baja a y < 1.5m durante el drag.
+    scheduleAutoDrop(ball, now = Date.now()) {
+        if (ball._autoDropAt) return;
+        ball.mesh.visible = false;
+        ball._autoDropAt  = now + 1000;
+        ball._autoDropPos = {
+            x: ball.ctrlPos.x,
+            y: 0.15,
+            z: ball.ctrlPos.z,
+        };
     }
 
     // Aplica el auto-drop a una bola cuyo timer ya expiró: la coloca en el
