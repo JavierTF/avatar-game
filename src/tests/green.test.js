@@ -521,10 +521,10 @@ describe('Bola verde — drop como muro tras agarrar', () => {
         expect(bm.balls.includes(ball)).toBe(false);
     });
 
-    it('mando demasiado cerca del jugador (frontDist < 0.2m): la bola se descarta', () => {
+    it('mando demasiado cerca del jugador (frontDist < 0.5m): la bola se descarta', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        const dropPos = { x: 0, y: 0.2, z: -0.1 };  // sólo 0.1m delante: pegada a los pies
+        const dropPos = { x: 0, y: 0.2, z: -0.3 };  // sólo 0.3m delante: pegada a los pies
 
         const ok = bm.dropAsWall(ball, dropPos, PLAYER);
 
@@ -544,17 +544,17 @@ describe('Bola verde — drop como muro tras agarrar', () => {
         expect(bm.balls.includes(ball)).toBe(false);
     });
 
-    it('justo en el límite y=1.5 y frontDist=0.2: válido (los límites son INclusivos)', () => {
+    it('justo en el límite y=1.5 y frontDist=0.5: válido (los límites son INclusivos)', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        const dropPos = { x: 0, y: 1.5, z: -0.2 };
+        const dropPos = { x: 0, y: 1.5, z: -0.5 };
 
         const ok = bm.dropAsWall(ball, dropPos, PLAYER);
 
         expect(ok).toBe(true);
         expect(ball._wall).toBe(true);
         expect(ball.mesh.position.y).toBe(1.5);
-        expect(ball.mesh.position.z).toBe(-0.2);
+        expect(ball.mesh.position.z).toBe(-0.5);
     });
 
     it('dropAsWall lanza si la bola no está agarrada (contrato explícito)', () => {
@@ -654,9 +654,11 @@ describe('Bola verde — flujo completo end-to-end', () => {
     const PLAYER = { x: 0, y: 1.6, z: 0 };
     const cam    = { matrixWorld: { ...PLAYER } };
 
-    it('spawn → grab → drag (4 puntos) → drop válido → permanece estática indefinidamente', () => {
+    it('spawn → grab → drag (4 puntos) → drop como muro → red destruye → onWallHit', () => {
         const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
         const collision = new CollisionSystem(makePlayer(), bm);
+        let wallHits = 0, wallHitPos = null;
+        bm.onWallHit = (p) => { wallHits++; wallHitPos = p; };
 
         // 1) SPAWN ─ estado inicial limpio
         const ball = bm.spawn('green', PLAYER);
@@ -692,7 +694,7 @@ describe('Bola verde — flujo completo end-to-end', () => {
             expect(ball.mesh.position.z).toBe(p.z);
         }
 
-        // 4) DROP ─ mando bajo y delante → la bola se queda en el suelo
+        // 4) DROP ─ mando bajo y delante → muro válido en la última posición
         const ok = bm.dropAsWall(ball, { x: 0.7, y: 0.2, z: -1.0 }, PLAYER);
         expect(ok).toBe(true);
         expect(ball._wall).toBe(true);
@@ -702,21 +704,28 @@ describe('Bola verde — flujo completo end-to-end', () => {
         expect(ball.velocity.y).toBe(0);
         expect(ball.velocity.z).toBe(0);
 
-        // 5) PERSISTE ─ aunque pase mucho tiempo y haya rojas alrededor, la
-        // bola dropeada permanece visible (sin destrucción por rojas).
+        // 5) PERSISTE ─ 20 frames de update, el muro no se mueve ni se elimina
         for (let i = 0; i < 20; i++) bm.update(0.016, PLAYER);
-        const red = bm.spawn('red', PLAYER);
-        red.mesh.position.set(0.7, 0.2, -1.0);  // sobre la verde
-        bm.update(0.016, PLAYER);
-
         expect(bm.balls.includes(ball)).toBe(true);
         expect(ball._wall).toBe(true);
         expect(ball.mesh.position.x).toBe(0.7);
         expect(ball.mesh.position.y).toBe(0.2);
         expect(ball.mesh.position.z).toBe(-1.0);
+
+        // 6) DESTRUCCIÓN ─ una roja toca el muro → ambos eliminados, callback con pos
+        const red = bm.spawn('red', PLAYER);
+        red.mesh.position.set(0.7, 0.2, -1.0);
+        bm._checkWallCollisions();
+
+        expect(bm.balls.includes(ball)).toBe(false);
+        expect(bm.balls.includes(red)).toBe(false);
+        expect(wallHits).toBe(1);
+        expect(wallHitPos.x).toBe(0.7);
+        expect(wallHitPos.y).toBe(0.2);
+        expect(wallHitPos.z).toBe(-1.0);
     });
 
-    it('spawn → grab → drop con mando alto → bola descartada', () => {
+    it('spawn → grab → drop con mando alto → bola descartada (sin muro fantasma)', () => {
         const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
         const ball = bm.spawn('green', PLAYER);
         ball.mesh.position.set(0, 1.4, -0.5);
@@ -728,6 +737,10 @@ describe('Bola verde — flujo completo end-to-end', () => {
         expect(ok).toBe(false);
         expect(ball._wall).toBeFalsy();
         expect(bm.balls.includes(ball)).toBe(false);
+
+        // No hay muro fantasma: _checkWallCollisions no encuentra walls
+        bm._checkWallCollisions();
+        expect(bm.balls.filter(b => b._wall).length).toBe(0);
     });
 });
 
@@ -834,20 +847,20 @@ describe('Bola verde — boundaries estrictos del drop (WALL_MAX_Y, WALL_MIN_FRO
         expect(ok).toBe(false);
     });
 
-    it('frontDist EXACTAMENTE 0.2 → válido (la condición es frontDist < 0.2)', () => {
+    it('frontDist EXACTAMENTE 0.5 → válido (la condición es frontDist < 0.5)', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        // playerPos.z=0, ctrlPos.z=-0.2 → frontDist = 0 - (-0.2) = 0.2
-        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.2 }, PLAYER);
+        // playerPos.z=0, ctrlPos.z=-0.5 → frontDist = 0 - (-0.5) = 0.5
+        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.5 }, PLAYER);
         expect(ok).toBe(true);
         expect(ball._wall).toBe(true);
-        expect(ball.mesh.position.z).toBe(-0.2);
+        expect(ball.mesh.position.z).toBe(-0.5);
     });
 
-    it('frontDist justo por debajo (0.19999) → descartado', () => {
+    it('frontDist justo por debajo (0.49999) → descartado', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.19999 }, PLAYER);
+        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.49999 }, PLAYER);
         expect(ok).toBe(false);
     });
 });
@@ -955,41 +968,70 @@ describe('Bola verde — persistencia del muro tras drop válido', () => {
     });
 });
 
-// La mecánica antigua "una roja toca el muro y lo destruye" se eliminó —
-// ahora la bola dropeada es decoración estática permanente.
-describe('Bola verde — la bola dropeada es estática y permanente (no destruible)', () => {
+describe('Bola verde — destrucción del muro por roja', () => {
     const PLAYER = { x: 0, y: 1.6, z: 0 };
 
-    function placeDropped(bm, x, y, z) {
+    function placeWall(bm, x, y, z) {
         const w = bm.spawn('green', PLAYER);
         w.grabbed = true;
         bm.dropAsWall(w, { x, y, z }, PLAYER);
         return w;
     }
 
-    it('una roja superpuesta sobre la verde dropeada NO la elimina', () => {
+    it('onWallHit recibe la posición del MURO impactado (no la del red)', () => {
         const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
-        const w  = placeDropped(bm, 0, 0.2, -1);
+        const w = placeWall(bm, 0.7, 0.3, -1.5);
+        let impactPos = null;
+        bm.onWallHit = (pos) => { impactPos = pos; };
+
         const red = bm.spawn('red', PLAYER);
+        red.mesh.position.set(0.6, 0.25, -1.45);  // cerca pero no exacto
+        bm._checkWallCollisions();
+
+        expect(impactPos).not.toBeNull();
+        expect(impactPos.x).toBe(0.7);
+        expect(impactPos.y).toBe(0.3);
+        expect(impactPos.z).toBe(-1.5);
+    });
+
+    it('una roja con _dropped (caída por poder) NO destruye el muro', () => {
+        const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
+        const w = placeWall(bm, 0, 0.2, -1);
+        const red = bm.spawn('red', PLAYER);
+        red._dropped = true;
         red.mesh.position.set(0, 0.2, -1);
 
-        bm.update(0.016, PLAYER);
+        bm._checkWallCollisions();
 
         expect(bm.balls.includes(w)).toBe(true);
         expect(w._wall).toBe(true);
+        expect(bm.balls.includes(red)).toBe(true);
     });
 
-    it('múltiples verdes dropeadas conviven (no se destruyen entre sí ni por rojas)', () => {
+    it('roja a más de HIT_R (>0.40) del muro NO lo destruye', () => {
         const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
-        placeDropped(bm, -1, 0.2, -1);
-        placeDropped(bm,  0, 0.2, -1);
-        placeDropped(bm,  1, 0.2, -1);
+        const w = placeWall(bm, 0, 0.2, -1);
+        const red = bm.spawn('red', PLAYER);
+        red.mesh.position.set(0.5, 0.2, -1);  // dx=0.5 > HIT_R=0.40
+
+        bm._checkWallCollisions();
+        expect(bm.balls.includes(w)).toBe(true);
+        expect(bm.balls.includes(red)).toBe(true);
+    });
+
+    it('una roja tocando UN muro destruye TODOS los muros existentes', () => {
+        const bm = new BallManager(makeScene(), STD_CONFIG, new Difficulty(1));
+        placeWall(bm, -1, 0.2, -1);
+        placeWall(bm,  0, 0.2, -1);
+        placeWall(bm,  1, 0.2, -1);
+        expect(bm.balls.filter(b => b._wall).length).toBe(3);
 
         const red = bm.spawn('red', PLAYER);
         red.mesh.position.set(0, 0.2, -1);
-        bm.update(0.016, PLAYER);
+        bm._checkWallCollisions();
 
-        expect(bm.balls.filter(b => b._wall).length).toBe(3);
+        expect(bm.balls.filter(b => b._wall).length).toBe(0);
+        expect(bm.balls.includes(red)).toBe(false);
     });
 });
 
@@ -1053,304 +1095,5 @@ describe('Bola verde — limpieza de recursos al eliminar', () => {
         expect(removed).toContain(ball.mesh);
         expect(geoDisposed).toBe(true);
         expect(matDisposed).toBe(true);
-    });
-});
-
-// =============================================================================
-// VARIANTES DE GRAB+DRAG: investigamos por qué la bola podría volver a estado
-// libre tras un grab válido. Cada test simula un sub-paso del renderloop real.
-// =============================================================================
-
-describe('Bola verde — invariantes de grab tras N frames sin selectend', () => {
-    const PLAYER = { x: 0, y: 1.6, z: 0 };
-    const cam    = { matrixWorld: { ...PLAYER } };
-
-    it('balls.update repetido (50 frames) NO resetea grabbed ni saca a la bola del manager', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-        ball.ctrlPos = { x: 0, y: 1.2, z: 0 };
-        ball.velocity.set(0, 0, 0);
-
-        for (let i = 0; i < 50; i++) {
-            bm.update(0.016, PLAYER);
-            expect(ball.grabbed).toBe(true);
-            expect(ball._wall).toBeFalsy();
-            expect(bm.balls.includes(ball)).toBe(true);
-        }
-    });
-
-    it('updateGreenHints NO resetea grabbed (sólo cambia material emissive)', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-
-        for (let i = 0; i < 20; i++) {
-            bm.updateGreenHints(
-                { x: 0,   y: 1.2, z: 0,   distanceTo(v){return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z);} },
-                { x: 0.5, y: 1.2, z: 0,   distanceTo(v){return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z);} },
-            );
-            expect(ball.grabbed).toBe(true);
-            expect(ball._wall).toBeFalsy();
-        }
-    });
-
-    it('collision.update con ctrl1Busy=true NO modifica la bola ya agarrada por ese mando', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-        ball.ctrlPos = { x: 0, y: 1.2, z: 0 };
-        const collision = new CollisionSystem(makePlayer(), bm);
-
-        // Mando en el mismo lugar que la bola, gatillo apretado, ctrl1Busy=true.
-        // Si collision.update intentara re-agarrarla, ya está agarrada (por
-        // su propio guard `if (ball.grabbed || ball._wall) continue;`).
-        // Pero queremos confirmar que NO la suelta.
-        const c1 = makeCtrlAt(0, 1.2, 0);
-        const c2 = makeCtrlAt(5, 0, 0);
-        for (let i = 0; i < 10; i++) {
-            collision.update(c1, c2, cam, true, false, true, false);
-            expect(ball.grabbed).toBe(true);
-            expect(ball._wall).toBeFalsy();
-        }
-    });
-
-    it('collision.update con ctrl1Busy=false (mando libre) y ball ya agarrada NO la altera', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-        ball.ctrlPos = { x: 0, y: 1.2, z: 0 };
-        const collision = new CollisionSystem(makePlayer(), bm);
-
-        const c1 = makeCtrlAt(0, 1.2, 0);
-        const c2 = makeCtrlAt(5, 0, 0);
-        // ctrl1Busy=false (como si grabbedBall1 estuviese null en main). El
-        // guard en collision.update por `ball.grabbed || ball._wall` debe seguir
-        // protegiendo a la bola.
-        collision.update(c1, c2, cam, true, false, false, false);
-        expect(ball.grabbed).toBe(true);
-        expect(ball._wall).toBeFalsy();
-    });
-
-    it('renderloop completo simulado (50 frames): grabbed persiste y posición sigue al mando', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        // Estado inicial post-grab.
-        ball.grabbed = true;
-        ball.ctrlPos = { x: 0, y: 1.2, z: 0 };
-        ball.mesh.position.set(0, 1.2, 0);
-        const collision = new CollisionSystem(makePlayer(), bm);
-
-        // Trayectoria del mando frame a frame.
-        const path = [];
-        for (let i = 0; i < 50; i++) {
-            path.push({ x: 0.01 * i, y: 1.2 + 0.005 * i, z: -0.01 * i });
-        }
-
-        for (let i = 0; i < path.length; i++) {
-            const ctrlPos = path[i];
-
-            // PASO 1: render loop asigna ctrlPos = gData.pos1 (referencia fresca).
-            ball.ctrlPos = ctrlPos;
-            // PASO 2: balls.update → _moveBall copia ctrlPos a position.
-            bm.update(0.016, PLAYER);
-            // PASO 3: collision.update — bola agarrada debe ser ignorada.
-            const c1 = makeCtrlAt(ctrlPos.x, ctrlPos.y, ctrlPos.z);
-            const c2 = makeCtrlAt(5, 0, 0);
-            collision.update(c1, c2, cam, true, false, true, false);
-            // PASO 4: updateGreenHints
-            bm.updateGreenHints(
-                { x: ctrlPos.x, y: ctrlPos.y, z: ctrlPos.z,
-                  distanceTo(v){return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z);} },
-                { x: 5, y: 0, z: 0,
-                  distanceTo(v){return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z);} },
-            );
-
-            // Tras todos los pasos del frame, la bola sigue agarrada y en la pos del mando.
-            expect(ball.grabbed).toBe(true);
-            expect(ball._wall).toBeFalsy();
-            expect(bm.balls.includes(ball)).toBe(true);
-            expect(ball.mesh.position.x).toBe(ctrlPos.x);
-            expect(ball.mesh.position.y).toBe(ctrlPos.y);
-            expect(ball.mesh.position.z).toBe(ctrlPos.z);
-        }
-    });
-
-    it('llamar bm.update CON otra bola roja cerca de la verde grabbed NO la suelta', () => {
-        // Hipótesis descartada: alguna interacción con rojas pudiera resetear.
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-        ball.ctrlPos = { x: 0, y: 1.2, z: 0 };
-
-        const red = bm.spawn('red', PLAYER);
-        red.mesh.position.set(0.05, 1.2, 0);  // muy cerca de la verde
-
-        for (let i = 0; i < 20; i++) {
-            bm.update(0.016, PLAYER);
-            expect(ball.grabbed).toBe(true);
-            expect(ball._wall).toBeFalsy();
-        }
-    });
-
-    it('múltiples spawn() durante drag NO afectan al ball ya agarrada', () => {
-        // Hipótesis descartada: el spawn timer dispara nuevos balls que de
-        // alguna forma corrompen la grabbed existente.
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-        ball.ctrlPos = { x: 0, y: 1.2, z: 0 };
-
-        for (let i = 0; i < 5; i++) {
-            bm.spawn('green', PLAYER);
-            bm.spawn('blue', PLAYER);
-            bm.spawn('red', PLAYER);
-            bm.update(0.016, PLAYER);
-        }
-
-        expect(ball.grabbed).toBe(true);
-        expect(ball._wall).toBeFalsy();
-        expect(bm.balls.includes(ball)).toBe(true);
-    });
-
-    it('el ÚNICO modo legítimo de resetear grabbed=false es dropAsWall (invariante)', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-        ball.ctrlPos = { x: 0, y: 0.2, z: -1.0 };
-
-        // Muchas operaciones que NO deberían resetear grabbed.
-        bm.update(0.016, PLAYER);
-        bm.updateGreenHints(
-            { x:0, y:0.2, z:-1, distanceTo(v){return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z);} },
-            { x:5, y:0,  z:0,   distanceTo(v){return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z);} },
-        );
-        const collision = new CollisionSystem(makePlayer(), bm);
-        collision.update(makeCtrlAt(0, 0.2, -1), makeCtrlAt(5, 0, 0), cam, true, false, true, false);
-
-        expect(ball.grabbed).toBe(true);
-
-        // SÓLO dropAsWall lo cambia.
-        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -1.0 }, PLAYER);
-        expect(ok).toBe(true);
-        expect(ball.grabbed).toBe(false);  // ahora sí, vía dropAsWall
-        expect(ball._wall).toBe(true);
-    });
-});
-
-describe('Bola verde — trigger "tap" (selectstart inmediatamente seguido de selectend)', () => {
-    const PLAYER = { x: 0, y: 1.6, z: 0 };
-
-    it('grab + drop inmediato en posición válida → ball queda como muro (no como agarrada)', () => {
-        // Reproduce el caso "rojo→verde": se agarra (grabbed=true) y antes
-        // de que el jugador pueda mover la mano, selectend dispara y ejecuta
-        // el drop. Si la pos del mando es válida, queda como muro, no flotando.
-        const { bm, ball } = makeGreenBallAt(0, 0.3, -0.5);  // bola donde estará el mando
-        const ctrl = makeCtrlAt(0, 0.3, -0.5);  // bajo y delante (frontDist=0.5)
-        const grabbed = bm.tryGrabGreen(ctrl, 1, false);
-        expect(grabbed).toBe(ball);
-        expect(ball.grabbed).toBe(true);
-
-        // Selectend inmediatamente. Mando en la misma posición.
-        const ok = bm.dropAsWall(ball, { x: 0, y: 0.3, z: -0.5 }, PLAYER);
-        expect(ok).toBe(true);
-        expect(ball.grabbed).toBe(false);
-        expect(ball._wall).toBe(true);
-        expect(bm.balls.includes(ball)).toBe(true);
-    });
-
-    it('grab + drop inmediato en posición INválida (alta) → ball se descarta', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.6, -0.3);
-        const ctrl = makeCtrlAt(0, 1.6, -0.3);
-        const grabbed = bm.tryGrabGreen(ctrl, 1, false);
-        expect(grabbed).toBe(ball);
-
-        // Selectend inmediato con mando todavía alto.
-        const ok = bm.dropAsWall(ball, { x: 0, y: 1.6, z: -0.3 }, PLAYER);
-        expect(ok).toBe(false);
-        expect(bm.balls.includes(ball)).toBe(false);  // descartada
-    });
-
-    it('grab + drop inmediato muy cerca del jugador (frontDist<0.2) → ball se descarta', () => {
-        const { bm, ball } = makeGreenBallAt(0, 0.2, -0.05);
-        const ctrl = makeCtrlAt(0, 0.2, -0.05);
-        const grabbed = bm.tryGrabGreen(ctrl, 1, false);
-        expect(grabbed).toBe(ball);
-
-        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.05 }, PLAYER);
-        expect(ok).toBe(false);
-        expect(bm.balls.includes(ball)).toBe(false);
-    });
-});
-
-describe('Bola verde — drag lee SIEMPRE pos fresca del mando vía getWorldPosition', () => {
-    // Simulamos lo que main.js hará en cada frame: leer la pos del mando
-    // directamente con ctrl.getWorldPosition (no vía gestures), asignarla a
-    // ball.ctrlPos y a ball.mesh.position.
-    function dragOneFrame(ball, ctrl) {
-        const wp = { x: 0, y: 0, z: 0 };
-        ctrl.getWorldPosition(wp);
-        ball.ctrlPos = wp;
-        ball.mesh.position.copy(wp);
-    }
-
-    it('drag lee pos fresca del mando cada frame, no depende de un cache previo', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-
-        // Frame 1: mando en (0.1, 1.0, 0).
-        const ctrl = makeCtrlAt(0.1, 1.0, 0);
-        dragOneFrame(ball, ctrl);
-        expect(ball.mesh.position.x).toBe(0.1);
-        expect(ball.mesh.position.y).toBe(1.0);
-
-        // Frame 2: mando se mueve a (0.5, 1.4, -0.2). Reemplazamos ctrl
-        // (simulamos que el mando ahora reporta otra pos vía getWorldPosition).
-        const ctrl2 = makeCtrlAt(0.5, 1.4, -0.2);
-        dragOneFrame(ball, ctrl2);
-        expect(ball.mesh.position.x).toBe(0.5);
-        expect(ball.mesh.position.y).toBe(1.4);
-        expect(ball.mesh.position.z).toBe(-0.2);
-    });
-
-    it('drag durante 30 frames con mando que se mueve en círculo', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-
-        for (let i = 0; i < 30; i++) {
-            const angle = (i / 30) * Math.PI * 2;
-            const x = 0.5 * Math.cos(angle);
-            const z = 0.5 * Math.sin(angle);
-            const ctrl = makeCtrlAt(x, 1.2, z);
-            dragOneFrame(ball, ctrl);
-            expect(ball.mesh.position.x).toBeCloseTo(x, 5);
-            expect(ball.mesh.position.z).toBeCloseTo(z, 5);
-        }
-    });
-});
-
-describe('Bola verde — drag con cambios de posición rápidos del mando', () => {
-    const PLAYER = { x: 0, y: 1.6, z: 0 };
-
-    it('cambio de ctrlPos cada frame: la posición del mesh siempre = ctrlPos del frame', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-
-        // Asignamos ctrlPos diferente cada frame, comprobamos que mesh.position
-        // refleja el último ctrlPos (no se queda en uno antiguo).
-        for (let i = 0; i < 30; i++) {
-            const next = { x: i * 0.05, y: 1.2 - i * 0.01, z: -i * 0.03 };
-            ball.ctrlPos = next;
-            bm.update(0.016, PLAYER);
-            expect(ball.mesh.position.x).toBe(next.x);
-            expect(ball.mesh.position.y).toBe(next.y);
-            expect(ball.mesh.position.z).toBe(next.z);
-        }
-    });
-
-    it('si entre dos updates ctrlPos no cambia, la bola se queda quieta (no aplica velocity)', () => {
-        const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
-        ball.grabbed = true;
-        ball.ctrlPos = { x: 0.3, y: 1.4, z: -0.5 };
-        ball.velocity.set(0.5, 0.5, 0.5);  // velocidad alta (no debería aplicarse)
-
-        for (let i = 0; i < 10; i++) {
-            bm.update(0.016, PLAYER);
-            expect(ball.mesh.position.x).toBe(0.3);
-            expect(ball.mesh.position.y).toBe(1.4);
-            expect(ball.mesh.position.z).toBe(-0.5);
-        }
     });
 });

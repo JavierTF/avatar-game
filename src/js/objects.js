@@ -8,7 +8,7 @@ const COLORS = {
 };
 
 const WALL_MAX_Y          = 1.50;  // alto máximo donde se puede soltar la bola
-const WALL_MIN_FRONT_DIST = 0.20;  // mínima distancia frontal al jugador
+const WALL_MIN_FRONT_DIST = 0.50;  // mínima distancia frontal al jugador
 
 // Radio de agarre de la verde — fuente única de verdad.
 // Lo importan collision.js (detección) y main.js (selectstart).
@@ -31,6 +31,7 @@ export class BallManager {
         this._spawnTimer = 0;
         this.onBallSpawned = null;   // (type) => void
         this.onRedEscaped  = null;   // () => void
+        this.onWallHit     = null;   // (impactPos) => void
     }
 
     // Pesos de spawn. Las rojas (movimiento caótico + homing) son las más
@@ -62,16 +63,17 @@ export class BallManager {
 
         for (let i = this.balls.length - 1; i >= 0; i--) {
             const b = this.balls[i];
-            // Bolas dropeadas (_wall=true) son estáticas y permanentes — no
-            // se mueven, no se eliminan por bounds ni por estar detrás. Las
-            // agarradas tampoco caducan por out-of-bounds (siguen al mando
-            // aunque éste salga del área de juego).
+            // Las bolas con _wall (muro verde) son estáticas — no se mueven.
             if (!b._wall) {
                 this._moveBall(b, delta, playerPos);
             }
+            // Bolas que ya pasaron detrás del jugador se eliminan inmediatamente
+            // (excepto las agarradas y las del muro). Las agarradas tampoco
+            // caducan por out-of-bounds — siguen al mando aunque éste salga
+            // del área de juego, para no dejar grabbedBall1/2 colgando.
             const behind = !b.grabbed && !b._wall &&
                            b.mesh.position.z > playerPos.z + 0.5;
-            const oob    = !b.grabbed && !b._wall && this._outOfBounds(b.mesh.position);
+            const oob    = !b.grabbed && this._outOfBounds(b.mesh.position);
             if (oob || behind) {
                 if (b.type === 'red' && !b._dropped && this.onRedEscaped) {
                     this.onRedEscaped();
@@ -79,6 +81,8 @@ export class BallManager {
                 this._remove(i);
             }
         }
+
+        this._checkWallCollisions();
     }
 
     // Intenta agarrar una verde en rango con el controlador `ctrl`. Si el
@@ -100,17 +104,15 @@ export class BallManager {
         return null;
     }
 
-    // Suelta una bola verde agarrada en el suelo, donde se queda permanente
-    // y visible. Acepta el drop si el mando está bajo (y ≤ 1.5m) y delante
-    // del jugador (frontDist ≥ 0.2m). En cualquier otro caso (alto o detrás),
-    // descarta la bola eliminándola del manager.
-    // El nombre `dropAsWall` es histórico (la mecánica original era un muro
-    // destructible por rojas); ahora la bola es sólo decoración estática.
-    // Devuelve true si la bola se quedó en el suelo, false si se descartó.
-    // Lanza si la bola no está agarrada o ya está dropeada.
+    // Convierte una bola verde agarrada en un ladrillo del muro, si el
+    // mando está bajo (y ≤ 1.5m) y delante del jugador (frontDist ≥ 0.5m).
+    // En cualquier otro caso (alto, demasiado cerca, o detrás), descarta la
+    // bola eliminándola del manager.
+    // Devuelve true si la bola se quedó como muro, false si se descartó.
+    // Lanza si la bola no está agarrada o ya es muro — contrato explícito.
     dropAsWall(ball, ctrlPos, playerPos) {
         if (!ball.grabbed) throw new Error('dropAsWall: la bola no está agarrada');
-        if (ball._wall)    throw new Error('dropAsWall: la bola ya está dropeada');
+        if (ball._wall)    throw new Error('dropAsWall: la bola ya es muro');
 
         const frontDist = playerPos.z - ctrlPos.z;
         const tooHigh   = ctrlPos.y > WALL_MAX_Y;
@@ -127,6 +129,27 @@ export class BallManager {
         ball.velocity.set(0, 0, 0);
         ball.mesh.position.copy(ctrlPos);
         return true;
+    }
+
+    // Si una roja toca CUALQUIER bloque del muro verde, todo el muro se
+    // destruye junto con esa bola atacante.
+    _checkWallCollisions() {
+        const walls = this.balls.filter(b => b._wall);
+        if (walls.length === 0) return;
+        const HIT_R = 0.40;
+        for (let i = this.balls.length - 1; i >= 0; i--) {
+            const d = this.balls[i];
+            if (d.type !== 'red' || d._wall || d._dropped) continue;
+            for (const w of walls) {
+                if (w.mesh.position.distanceTo(d.mesh.position) < HIT_R) {
+                    const impactPos = w.mesh.position.clone();
+                    if (this.onWallHit) this.onWallHit(impactPos);
+                    for (const wb of walls) this.remove(wb);
+                    this.remove(d);
+                    return;
+                }
+            }
+        }
     }
 
     spawn(type, playerPos) {

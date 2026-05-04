@@ -16,7 +16,6 @@ import { SoundFX } from './sound.js';
 import { CountdownHUD } from './countdown-hud.js';
 import { FinalMetricsPanel } from './final-metrics-panel.js';
 import { activateGreen as _runActivateGreen, endGame as _runEndGame } from './game-flow.js';
-import { TriggerPoller } from './trigger-poller.js';
 
 let renderer, scene, camera;
 let c1, c2, cg1, cg2;
@@ -27,16 +26,12 @@ let clock;
 let running = false;
 let held1 = false, held2 = false;
 let grabbedBall1 = null, grabbedBall2 = null;
-const _triggerPoll = new TriggerPoller();
-let _inputSource1 = null, _inputSource2 = null;
 let isDesktop = false;
 let _mouseDown = false;
 let _yaw = 0, _pitch = 0;
 
 const _fwd = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
-const _grabPos1 = new THREE.Vector3();
-const _grabPos2 = new THREE.Vector3();
 
 // Posición fija (en mundo) donde aparecen las métricas de feedback:
 // al frente, lejos, algo arriba, un poco a la derecha de donde vienen las bolas.
@@ -96,12 +91,16 @@ async function init() {
     c1.add(ray.clone());
     c2.add(ray.clone());
 
-    // Capturamos inputSource al conectarse el mando — así podemos leer el
-    // gamepad directo cada frame en lugar de depender de selectstart/end.
-    c1.addEventListener('connected',    (e) => { _inputSource1 = e.data; });
-    c1.addEventListener('disconnected', ()  => { _inputSource1 = null; });
-    c2.addEventListener('connected',    (e) => { _inputSource2 = e.data; });
-    c2.addEventListener('disconnected', ()  => { _inputSource2 = null; });
+    c1.addEventListener('selectstart', () => { held1 = true; _tryGrabGreen(c1, 1); });
+    c1.addEventListener('selectend',   () => {
+        held1 = false;
+        if (grabbedBall1) { _activateGreen(grabbedBall1, c1); grabbedBall1 = null; }
+    });
+    c2.addEventListener('selectstart', () => { held2 = true; _tryGrabGreen(c2, 2); });
+    c2.addEventListener('selectend',   () => {
+        held2 = false;
+        if (grabbedBall2) { _activateGreen(grabbedBall2, c2); grabbedBall2 = null; }
+    });
 
     clock = new THREE.Clock();
 
@@ -190,6 +189,7 @@ function startGame() {
 
     balls.onBallSpawned = (type) => metrics.ballSpawned(type);
     balls.onRedEscaped  = ()     => metrics.redEscaped();
+    balls.onWallHit     = ()     => sound.negative();
 
     collision.onRedHit = (hitPos) => {
         player.hit();
@@ -296,38 +296,12 @@ function renderLoop() {
 
     _camPos.setFromMatrixPosition(camera.matrixWorld);
 
+    // Posiciones de mandos PRIMERO. Si una bola está agarrada, le asignamos
+    // la posición fresca del mando ANTES de que balls.update llame a _moveBall —
+    // así la bola sigue al mando sin un frame de retraso.
     const gData = gestures.update(delta, c1, c2);
-
-    // POLLING del trigger: leemos el estado del botón directamente del
-    // gamepad cada frame, en lugar de fiarnos de selectstart/selectend
-    // (que algunos runtimes XR disparan espuriamente).
-    const t1 = _inputSource1?.gamepad?.buttons?.[0]?.pressed ?? false;
-    const t2 = _inputSource2?.gamepad?.buttons?.[0]?.pressed ?? false;
-    const ev1 = _triggerPoll.poll(1, t1);
-    const ev2 = _triggerPoll.poll(2, t2);
-
-    if (ev1 === 'pressed') { held1 = true;  _tryGrabGreen(c1, 1); }
-    if (ev1 === 'released') {
-        held1 = false;
-        if (grabbedBall1) { _activateGreen(grabbedBall1, c1); grabbedBall1 = null; }
-    }
-    if (ev2 === 'pressed') { held2 = true;  _tryGrabGreen(c2, 2); }
-    if (ev2 === 'released') {
-        held2 = false;
-        if (grabbedBall2) { _activateGreen(grabbedBall2, c2); grabbedBall2 = null; }
-    }
-
-    // Drag de bolas agarradas: pos fresca del mando cada frame.
-    if (grabbedBall1) {
-        c1.getWorldPosition(_grabPos1);
-        grabbedBall1.ctrlPos = _grabPos1;
-        grabbedBall1.mesh.position.copy(_grabPos1);
-    }
-    if (grabbedBall2) {
-        c2.getWorldPosition(_grabPos2);
-        grabbedBall2.ctrlPos = _grabPos2;
-        grabbedBall2.mesh.position.copy(_grabPos2);
-    }
+    if (grabbedBall1) grabbedBall1.ctrlPos = gData.pos1;
+    if (grabbedBall2) grabbedBall2.ctrlPos = gData.pos2;
 
     balls.update(delta, _camPos);
     handlePowers(gData);
