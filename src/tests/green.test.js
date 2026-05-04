@@ -521,10 +521,10 @@ describe('Bola verde — drop como muro tras agarrar', () => {
         expect(bm.balls.includes(ball)).toBe(false);
     });
 
-    it('mando demasiado cerca del jugador (frontDist < 0.5m): la bola se descarta', () => {
+    it('mando demasiado cerca del jugador (frontDist < 0.2m): la bola se descarta', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        const dropPos = { x: 0, y: 0.2, z: -0.3 };  // sólo 0.3m delante: pegada a los pies
+        const dropPos = { x: 0, y: 0.2, z: -0.1 };  // sólo 0.1m delante: pegada a los pies
 
         const ok = bm.dropAsWall(ball, dropPos, PLAYER);
 
@@ -544,17 +544,17 @@ describe('Bola verde — drop como muro tras agarrar', () => {
         expect(bm.balls.includes(ball)).toBe(false);
     });
 
-    it('justo en el límite y=1.5 y frontDist=0.5: válido (los límites son INclusivos)', () => {
+    it('justo en el límite y=1.5 y frontDist=0.2: válido (los límites son INclusivos)', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        const dropPos = { x: 0, y: 1.5, z: -0.5 };
+        const dropPos = { x: 0, y: 1.5, z: -0.2 };
 
         const ok = bm.dropAsWall(ball, dropPos, PLAYER);
 
         expect(ok).toBe(true);
         expect(ball._wall).toBe(true);
         expect(ball.mesh.position.y).toBe(1.5);
-        expect(ball.mesh.position.z).toBe(-0.5);
+        expect(ball.mesh.position.z).toBe(-0.2);
     });
 
     it('dropAsWall lanza si la bola no está agarrada (contrato explícito)', () => {
@@ -833,20 +833,20 @@ describe('Bola verde — boundaries estrictos del drop (WALL_MAX_Y, WALL_MIN_FRO
         expect(ok).toBe(false);
     });
 
-    it('frontDist EXACTAMENTE 0.5 → válido (la condición es frontDist < 0.5)', () => {
+    it('frontDist EXACTAMENTE 0.2 → válido (la condición es frontDist < 0.2)', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        // playerPos.z=0, ctrlPos.z=-0.5 → frontDist = 0 - (-0.5) = 0.5
-        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.5 }, PLAYER);
+        // playerPos.z=0, ctrlPos.z=-0.2 → frontDist = 0 - (-0.2) = 0.2
+        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.2 }, PLAYER);
         expect(ok).toBe(true);
         expect(ball._wall).toBe(true);
-        expect(ball.mesh.position.z).toBe(-0.5);
+        expect(ball.mesh.position.z).toBe(-0.2);
     });
 
-    it('frontDist justo por debajo (0.49999) → descartado', () => {
+    it('frontDist justo por debajo (0.19999) → descartado', () => {
         const { bm, ball } = makeGreenBallAt(0, 1.2, 0);
         ball.grabbed = true;
-        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.49999 }, PLAYER);
+        const ok = bm.dropAsWall(ball, { x: 0, y: 0.2, z: -0.19999 }, PLAYER);
         expect(ok).toBe(false);
     });
 });

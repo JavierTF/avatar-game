@@ -8,7 +8,7 @@ const COLORS = {
 };
 
 const WALL_MAX_Y          = 1.50;  // alto máximo donde se puede soltar la bola
-const WALL_MIN_FRONT_DIST = 0.50;  // mínima distancia frontal al jugador
+const WALL_MIN_FRONT_DIST = 0.20;  // mínima distancia frontal al jugador
 
 // Radio de agarre de la verde — fuente única de verdad.
 // Lo importan collision.js (detección) y main.js (selectstart).
