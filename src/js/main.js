@@ -16,7 +16,7 @@ import { SoundFX } from './sound.js';
 import { CountdownHUD } from './countdown-hud.js';
 import { FinalMetricsPanel } from './final-metrics-panel.js';
 import { activateGreen as _runActivateGreen, endGame as _runEndGame } from './game-flow.js';
-import { TriggerDebouncer } from './trigger-debounce.js';
+import { TriggerPoller } from './trigger-poller.js';
 
 let renderer, scene, camera;
 let c1, c2, cg1, cg2;
@@ -27,7 +27,8 @@ let clock;
 let running = false;
 let held1 = false, held2 = false;
 let grabbedBall1 = null, grabbedBall2 = null;
-const _triggerDeb = new TriggerDebouncer();
+const _triggerPoll = new TriggerPoller();
+let _inputSource1 = null, _inputSource2 = null;
 let isDesktop = false;
 let _mouseDown = false;
 let _yaw = 0, _pitch = 0;
@@ -95,28 +96,12 @@ async function init() {
     c1.add(ray.clone());
     c2.add(ray.clone());
 
-    c1.addEventListener('selectstart', () => {
-        _triggerDeb.onPress(1);
-        held1 = true;
-        _tryGrabGreen(c1, 1);
-    });
-    c1.addEventListener('selectend',   () => {
-        // Filtra selectend espurio: si el press duró <100ms, asumimos ruido
-        // del runtime XR y NO procesamos el drop. La bola sigue agarrada.
-        if (!_triggerDeb.onRelease(1)) return;
-        held1 = false;
-        if (grabbedBall1) { _activateGreen(grabbedBall1, c1); grabbedBall1 = null; }
-    });
-    c2.addEventListener('selectstart', () => {
-        _triggerDeb.onPress(2);
-        held2 = true;
-        _tryGrabGreen(c2, 2);
-    });
-    c2.addEventListener('selectend',   () => {
-        if (!_triggerDeb.onRelease(2)) return;
-        held2 = false;
-        if (grabbedBall2) { _activateGreen(grabbedBall2, c2); grabbedBall2 = null; }
-    });
+    // Capturamos inputSource al conectarse el mando — así podemos leer el
+    // gamepad directo cada frame en lugar de depender de selectstart/end.
+    c1.addEventListener('connected',    (e) => { _inputSource1 = e.data; });
+    c1.addEventListener('disconnected', ()  => { _inputSource1 = null; });
+    c2.addEventListener('connected',    (e) => { _inputSource2 = e.data; });
+    c2.addEventListener('disconnected', ()  => { _inputSource2 = null; });
 
     clock = new THREE.Clock();
 
@@ -313,11 +298,26 @@ function renderLoop() {
 
     const gData = gestures.update(delta, c1, c2);
 
-    // Drag de bolas verdes agarradas: leemos la pos FRESCA del mando vía
-    // getWorldPosition (que fuerza updateWorldMatrix) en lugar de usar
-    // gData.pos1, que lee matrixWorld sin actualizar y puede quedar stale.
-    // También copiamos directo a mesh.position para que el frame actual ya
-    // muestre la bola en la mano (no dependemos de _moveBall posterior).
+    // POLLING del trigger: leemos el estado del botón directamente del
+    // gamepad cada frame, en lugar de fiarnos de selectstart/selectend
+    // (que algunos runtimes XR disparan espuriamente).
+    const t1 = _inputSource1?.gamepad?.buttons?.[0]?.pressed ?? false;
+    const t2 = _inputSource2?.gamepad?.buttons?.[0]?.pressed ?? false;
+    const ev1 = _triggerPoll.poll(1, t1);
+    const ev2 = _triggerPoll.poll(2, t2);
+
+    if (ev1 === 'pressed') { held1 = true;  _tryGrabGreen(c1, 1); }
+    if (ev1 === 'released') {
+        held1 = false;
+        if (grabbedBall1) { _activateGreen(grabbedBall1, c1); grabbedBall1 = null; }
+    }
+    if (ev2 === 'pressed') { held2 = true;  _tryGrabGreen(c2, 2); }
+    if (ev2 === 'released') {
+        held2 = false;
+        if (grabbedBall2) { _activateGreen(grabbedBall2, c2); grabbedBall2 = null; }
+    }
+
+    // Drag de bolas agarradas: pos fresca del mando cada frame.
     if (grabbedBall1) {
         c1.getWorldPosition(_grabPos1);
         grabbedBall1.ctrlPos = _grabPos1;
