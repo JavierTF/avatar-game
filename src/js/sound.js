@@ -36,6 +36,13 @@ export class SoundFX {
         this._tone(1320, 0.14, 'triangle', 0.10);
     }
 
+    // Naranja — "vida": acorde mayor breve ascendente (C-E-G).
+    life() {
+        this._tone(523, 0.14, 'sine', 0.16);          // C5
+        this._tone(659, 0.14, 'sine', 0.14, 0.04);    // E5 con leve retraso
+        this._tone(784, 0.18, 'sine', 0.13, 0.08);    // G5
+    }
+
     // Roja — "negativo": tono bajo con caída de pitch.
     negative() {
         if (!this.ctx) return;

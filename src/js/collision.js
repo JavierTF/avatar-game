@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ORANGE_GRAB_R } from './objects.js';
 
 const _wp  = new THREE.Vector3();
 const _head = new THREE.Vector3();
@@ -12,11 +13,12 @@ export class CollisionSystem {
     constructor(player, ballManager) {
         this.player      = player;
         this.ballManager = ballManager;
-        this.onBlueHit      = null;
-        this.onRedHit       = null;
+        this.onBlueHit       = null;
+        this.onRedHit        = null;
+        this.onOrangeGrabbed = null;
     }
 
-    update(c1, c2, camera, held1, held2) {
+    update(c1, c2, camera, held1, held2, ctrl1Busy = false, ctrl2Busy = false) {
         _head.setFromMatrixPosition(camera.matrixWorld);
         c1.getWorldPosition(_wp);
         const p1 = _wp.clone();
@@ -48,6 +50,23 @@ export class CollisionSystem {
                     const pos = ball.mesh.position.clone();
                     this.ballManager.remove(ball);
                     if (this.onBlueHit) this.onBlueHit(pos);
+                }
+            } else if (ball.type === 'orange') {
+                if (ball.grabbed) continue;
+                const gh1 = p1.distanceTo(bp) < ORANGE_GRAB_R;
+                const gh2 = p2.distanceTo(bp) < ORANGE_GRAB_R;
+                // Cada mando sólo puede agarrar UNA bola a la vez. Si ya
+                // tiene una (ctrlXBusy), no se reasigna — evita huérfanas.
+                if (gh1 && held1 && !ctrl1Busy) {
+                    ball.grabbed = true;
+                    ball.ctrlPos = { x: p1.x, y: p1.y, z: p1.z };
+                    ball.mesh.position.copy(ball.ctrlPos);
+                    if (this.onOrangeGrabbed) this.onOrangeGrabbed(ball, 1);
+                } else if (gh2 && held2 && !ctrl2Busy) {
+                    ball.grabbed = true;
+                    ball.ctrlPos = { x: p2.x, y: p2.y, z: p2.z };
+                    ball.mesh.position.copy(ball.ctrlPos);
+                    if (this.onOrangeGrabbed) this.onOrangeGrabbed(ball, 2);
                 }
             }
         }

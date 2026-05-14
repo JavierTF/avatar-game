@@ -103,8 +103,10 @@ function _renderToCanvas(player, nivel, metrics) {
     ctx.font = '24px Arial';
     y = headY + lineH;
     const rojasEsquivadas = Math.max(0, metrics.reds.total - metrics.reds.hit);
+    const oranges = metrics.oranges || { hit: 0, total: 0 };
     ctx.fillText(`Rojas (esquivadas): ${rojasEsquivadas}/${metrics.reds.total}`, col3, y); y += lineH;
     ctx.fillText(`Azules: ${metrics.blues.hit}/${metrics.blues.total}`, col3, y); y += lineH;
+    ctx.fillText(`Naranjas: ${oranges.hit}/${oranges.total}`, col3, y); y += lineH;
     ctx.fillText(`Racha máx. sin daño: ${metrics.rachaMaxSinDaño}`, col3, y); y += lineH;
 
     y += lineH * 0.5;

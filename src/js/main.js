@@ -25,6 +25,7 @@ let config;
 let clock;
 let running = false;
 let held1 = false, held2 = false;
+let grabbedBall1 = null, grabbedBall2 = null;
 let isDesktop = false;
 let _mouseDown = false;
 let _yaw = 0, _pitch = 0;
@@ -90,10 +91,18 @@ async function init() {
     c1.add(ray.clone());
     c2.add(ray.clone());
 
-    c1.addEventListener('selectstart', () => { held1 = true; });
-    c1.addEventListener('selectend',   () => { held1 = false; });
-    c2.addEventListener('selectstart', () => { held2 = true; });
-    c2.addEventListener('selectend',   () => { held2 = false; });
+    c1.addEventListener('selectstart', () => { held1 = true; _tryGrabOrange(c1, 1); });
+    c1.addEventListener('selectend',   () => {
+        held1 = false;
+        if (grabbedBall1) _releaseOrange(grabbedBall1);
+        grabbedBall1 = null;
+    });
+    c2.addEventListener('selectstart', () => { held2 = true; _tryGrabOrange(c2, 2); });
+    c2.addEventListener('selectend',   () => {
+        held2 = false;
+        if (grabbedBall2) _releaseOrange(grabbedBall2);
+        grabbedBall2 = null;
+    });
 
     clock = new THREE.Clock();
 
@@ -150,9 +159,12 @@ function startGame() {
 
     // Reset del estado XR — si el jugador llegó a game over con el trigger
     // apretado, held1/held2 quedaban en true. Sin este reset los poderes
-    // de dos manos podían dispararse antes de tiempo.
+    // de dos manos podían dispararse antes de tiempo, y las referencias
+    // de grab colgadas bloqueaban nuevos agarres (ctrlBusy=true).
     held1 = false;
     held2 = false;
+    grabbedBall1 = null;
+    grabbedBall2 = null;
 
     const nivelInicial = parseInt(document.querySelector('input[name="nivel-inicio"]:checked')?.value ?? '1');
 
@@ -194,6 +206,11 @@ function startGame() {
         sound.magic();
     };
 
+    collision.onOrangeGrabbed = (ball, ctrl) => {
+        if (ctrl === 1) grabbedBall1 = ball;
+        else            grabbedBall2 = ball;
+    };
+
     running = true;
 }
 
@@ -225,6 +242,35 @@ function handlePowers(gData) {
     }
 }
 
+// Agarre inmediato al pulsar el gatillo: si hay una naranja en rango y el
+// mando no tiene ya una bola, la agarramos en el mismo evento, sin esperar al
+// próximo tick de collision.update. Cubre pulsaciones cortas.
+function _tryGrabOrange(ctrl, idx) {
+    if (!balls) return;
+    const already = idx === 1 ? !!grabbedBall1 : !!grabbedBall2;
+    const grabbed = balls.tryGrabOrange(ctrl, idx, already);
+    if (grabbed) {
+        if (idx === 1) grabbedBall1 = grabbed;
+        else            grabbedBall2 = grabbed;
+    }
+}
+
+// Al soltar el gatillo: cura +1 vida (cap maxVida), spawnea feedback ♥ N,
+// suena `life()` y elimina la bola. Si la partida ya terminó, ignora el
+// soltado para no disparar sonidos ni cambios de estado.
+function _releaseOrange(ball) {
+    if (!running) {
+        balls.remove(ball);
+        return;
+    }
+    player.heal();
+    metrics.ballHit('orange');
+    const pos = ball.mesh.position.clone();
+    feedback.spawn('orange', pos, `♥ ${player.vida}`, _metricBillboard());
+    sound.life();
+    balls.remove(ball);
+}
+
 function endGame() {
     _runEndGame({
         alreadyEnded: !running,
@@ -254,10 +300,15 @@ function renderLoop() {
 
     const gData = gestures.update(delta, c1, c2);
 
+    // Drag de naranjas agarradas: asignamos la posición fresca del mando ANTES
+    // de balls.update, así la bola sigue al mando sin un frame de retraso.
+    if (grabbedBall1) grabbedBall1.ctrlPos = { x: gData.pos1.x, y: gData.pos1.y, z: gData.pos1.z };
+    if (grabbedBall2) grabbedBall2.ctrlPos = { x: gData.pos2.x, y: gData.pos2.y, z: gData.pos2.z };
+
     balls.update(delta, _camPos);
     handlePowers(gData);
 
-    collision.update(c1, c2, camera, held1, held2);
+    collision.update(c1, c2, camera, held1, held2, !!grabbedBall1, !!grabbedBall2);
 
     // Si una colisión letal disparó endGame() intra-frame, salimos antes de
     // ejecutar el resto del frame (countdown, métricas, etc.) — el contador
@@ -268,6 +319,8 @@ function renderLoop() {
         renderer.render(scene, camera);
         return;
     }
+
+    balls.updateOrangeHints(gData.pos1, gData.pos2);
 
     powers.update(delta);
     feedback.update(delta);

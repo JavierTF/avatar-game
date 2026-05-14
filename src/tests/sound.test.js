@@ -45,6 +45,7 @@ describe('SoundFX — inicialización', () => {
         const s = new SoundFX();
         expect(s.ctx).toBeNull();
         expect(() => s.magic()).not.toThrow();
+        expect(() => s.life()).not.toThrow();
         expect(() => s.negative()).not.toThrow();
     });
 
@@ -78,6 +79,15 @@ describe('SoundFX — disparos', () => {
         expect(oscCount).toBe(2);
     });
 
+    it('life() crea 3 osciladores (acorde mayor C-E-G)', () => {
+        calls.length = 0;
+        const s = new SoundFX();
+        s.init();
+        s.life();
+        const oscCount = calls.filter(c => c[0] === 'createOscillator').length;
+        expect(oscCount).toBe(3);
+    });
+
     it('negative() crea 1 oscilador con barrido de pitch (220 → 80 Hz)', () => {
         calls.length = 0;
         const s = new SoundFX();
@@ -100,6 +110,7 @@ describe('SoundFX — disparos', () => {
             s.init();
             expect(s.ctx).toBeNull();
             expect(() => s.magic()).not.toThrow();
+            expect(() => s.life()).not.toThrow();
             expect(() => s.negative()).not.toThrow();
         } finally {
             window.AudioContext = oldCtx;

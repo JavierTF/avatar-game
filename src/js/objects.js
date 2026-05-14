@@ -7,6 +7,10 @@ const COLORS = {
     orange: 0xff8800,
 };
 
+// Radio de agarre de la naranja — fuente única de verdad.
+// Lo importan collision.js (detección) y main.js (selectstart).
+export const ORANGE_GRAB_R = 0.45;
+
 function randomGeo() {
     const r = THREE.MathUtils.lerp(0.1, 0.25, Math.random());
     return new THREE.SphereGeometry(r, 12, 12);
@@ -57,8 +61,11 @@ export class BallManager {
             const b = this.balls[i];
             this._moveBall(b, delta, playerPos);
             // Bolas que ya pasaron detrás del jugador se eliminan inmediatamente.
-            const behind = b.mesh.position.z > playerPos.z + 0.5;
-            const oob    = this._outOfBounds(b.mesh.position);
+            // Las naranjas agarradas tampoco caducan por out-of-bounds — siguen
+            // al mando aunque éste salga del área de juego, para no dejar
+            // referencias colgando.
+            const behind = !b.grabbed && b.mesh.position.z > playerPos.z + 0.5;
+            const oob    = !b.grabbed && this._outOfBounds(b.mesh.position);
             if (oob || behind) {
                 if (b.type === 'red' && !b._dropped && this.onRedEscaped) {
                     this.onRedEscaped();
@@ -66,6 +73,25 @@ export class BallManager {
                 this._remove(i);
             }
         }
+    }
+
+    // Intenta agarrar una naranja en rango con el controlador `ctrl`. Si el
+    // mando ya tiene una bola (alreadyGrabbed=true), no agarra nada. En éxito
+    // la bola se pega al mando (sigue al mando vía drag en _moveBall).
+    tryGrabOrange(ctrl, idx, alreadyGrabbed) {
+        if (alreadyGrabbed) return null;
+        const cp = new THREE.Vector3();
+        ctrl.getWorldPosition(cp);
+        for (const ball of this.balls) {
+            if (ball.type !== 'orange' || ball.grabbed) continue;
+            if (cp.distanceTo(ball.mesh.position) < ORANGE_GRAB_R) {
+                ball.grabbed = true;
+                ball.ctrlPos = { x: cp.x, y: cp.y, z: cp.z };
+                ball.mesh.position.copy(ball.ctrlPos);
+                return ball;
+            }
+        }
+        return null;
     }
 
     spawn(type, playerPos) {
@@ -82,7 +108,7 @@ export class BallManager {
 
         const vel = this._velocity(type, cfg, spawnPos, playerPos);
 
-        const ball = { mesh, type, velocity: vel, cfg, alive: true };
+        const ball = { mesh, type, velocity: vel, cfg, alive: true, grabbed: false, ctrlPos: null };
         if (type === 'red') {
             ball._age        = 0;
             ball._chaosPhase = Math.random() * Math.PI * 2;
@@ -135,6 +161,12 @@ export class BallManager {
     }
 
     _moveBall(ball, delta, playerPos) {
+        // Una bola agarrada NO se mueve por su velocidad. Si tiene ctrlPos,
+        // sigue al mando; si por algún motivo ctrlPos es null, se queda quieta.
+        if (ball.grabbed) {
+            if (ball.ctrlPos) ball.mesh.position.copy(ball.ctrlPos);
+            return;
+        }
         // Movimiento LOCO para la roja: X e Y oscilan con dos ondas
         // superpuestas de distinta frecuencia; Z se mantiene o hace homing suave.
         if (ball.type === 'red') {
@@ -190,6 +222,25 @@ export class BallManager {
 
     removeAll() {
         for (let i = this.balls.length - 1; i >= 0; i--) this._remove(i);
+    }
+
+    // Hint visual: brillo naranja cuando el mando está en rango de agarre.
+    // Bolas agarradas se fuerzan a emissive APAGADO (en vez de saltarlas, lo
+    // que las dejaba "congeladas" con el último glow).
+    updateOrangeHints(p1, p2) {
+        for (const b of this.balls) {
+            if (b.type !== 'orange') continue;
+            if (b.grabbed) {
+                b.mesh.material.emissive.setHex(0x000000);
+                b.mesh.material.emissiveIntensity = 0.2;
+                continue;
+            }
+            const dx1 = Math.hypot(p1.x - b.mesh.position.x, p1.y - b.mesh.position.y, p1.z - b.mesh.position.z);
+            const dx2 = Math.hypot(p2.x - b.mesh.position.x, p2.y - b.mesh.position.y, p2.z - b.mesh.position.z);
+            const near = dx1 < ORANGE_GRAB_R || dx2 < ORANGE_GRAB_R;
+            b.mesh.material.emissive.setHex(near ? 0xffaa44 : 0x000000);
+            b.mesh.material.emissiveIntensity = near ? 2.0 : 0.2;
+        }
     }
 
     getBallPositions() {

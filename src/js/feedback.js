@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 
 const COLORS = {
-    red:   0xff2222,
-    blue:  0x2255ff,
+    red:    0xff2222,
+    blue:   0x2255ff,
+    orange: 0xff8800,
 };
 
 function hexToRGB(hex) {
