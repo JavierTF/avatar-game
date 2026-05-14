@@ -9,7 +9,8 @@
   "balls": {
     "red":    { "speed": 0.008, "coneAngle": 90, "coneWidth": 60, "pattern": "homing" },
     "blue":   { "speed": 0.012, "coneAngle": 90, "coneWidth": 60, "pattern": "straight" },
-    "green":  { "speed": 0.010, "coneAngle": 90, "coneWidth": 60, "pattern": "straight" }
+    "green":  { "speed": 0.010, "coneAngle": 90, "coneWidth": 60, "pattern": "straight" },
+    "orange": { "speed": 0.010, "coneAngle": 90, "coneWidth": 60, "pattern": "straight" }
   },
   "player": {
     "vidaInicial": 5,

@@ -10,26 +10,40 @@ const { Difficulty }  = await import('../js/difficulty.js');
 
 function makeManager(nivel = 1) {
     const scene      = { add() {}, remove() {} };
-    const config     = { balls: { red: { speed: 0.008, pattern: 'homing' }, blue: { speed: 0.012 }, green: { speed: 0.010 } } };
+    const config     = { balls: {
+        red:    { speed: 0.008, pattern: 'homing' },
+        blue:   { speed: 0.012 },
+        green:  { speed: 0.010 },
+        orange: { speed: 0.010, pattern: 'straight' },
+    } };
     const difficulty = new Difficulty(nivel);
     return new BallManager(scene, config, difficulty);
 }
 
 describe('BallManager — pesos de spawn', () => {
-    it('nivel 1: 4 verdes, 4 azules, 5 rojas', () => {
+    it('nivel 1: 4 verdes, 4 azules, 4 naranjas, 5 rojas', () => {
         const m = makeManager(1);
         const w = m._spawnWeights();
         expect(w.green).toBe(4);
         expect(w.blue).toBe(4);
+        expect(w.orange).toBe(4);
         expect(w.red).toBe(5);
     });
 
-    it('nivel 11+: 2 verdes, 2 azules, 8 rojas', () => {
+    it('nivel 11+: 2 verdes, 2 azules, 2 naranjas, 8 rojas', () => {
         const m = makeManager(11);
         const w = m._spawnWeights();
         expect(w.green).toBe(2);
         expect(w.blue).toBe(2);
+        expect(w.orange).toBe(2);
         expect(w.red).toBe(8);
+    });
+
+    it('naranja tiene la MISMA frecuencia que verde en todo nivel', () => {
+        for (const nivel of [1, 3, 5, 7, 10, 15]) {
+            const w = makeManager(nivel)._spawnWeights();
+            expect(w.orange).toBe(w.green);
+        }
     });
 
     it('todos los pesos son no negativos', () => {
@@ -54,12 +68,42 @@ describe('BallManager — pesos de spawn', () => {
         expect(w11.red).toBeGreaterThanOrEqual(w1.red);
     });
 
-    it('_pickType sólo devuelve tipos válidos (red, blue, green)', () => {
+    it('_pickType puede devolver naranja entre los otros tipos válidos', () => {
         const m     = makeManager(1);
-        const tipos = Array.from({ length: 200 }, () => m._pickType());
+        const tipos = Array.from({ length: 500 }, () => m._pickType());
         for (const t of tipos) {
-            expect(['blue', 'green', 'red']).toContain(t);
+            expect(['blue', 'green', 'red', 'orange']).toContain(t);
         }
+        expect(tipos).toContain('orange');  // con 500 muestras y peso 4/17 debe salir
+    });
+});
+
+describe('BallManager — bola naranja', () => {
+    it('spawn naranja crea una bola con type="orange"', () => {
+        const m    = makeManager(1);
+        const ball = m.spawn('orange', { x: 0, y: 1.6, z: 0 });
+        expect(ball.type).toBe('orange');
+        expect(ball.alive).toBe(true);
+        expect(ball.grabbed).toBe(false);
+    });
+
+    it('naranja NO tiene campos de caos (movimiento recto, no como la roja)', () => {
+        const m    = makeManager(1);
+        const ball = m.spawn('orange', { x: 0, y: 1.6, z: 0 });
+        expect(ball._age).toBeUndefined();
+        expect(ball._chaosPhase).toBeUndefined();
+        expect(ball._chaosFreq).toBeUndefined();
+    });
+
+    it('naranja sale detrás del jugador igual que azul/verde (movimiento recto, no agarrada)', () => {
+        const m = makeManager(1);
+        const b = m.spawn('orange', { x: 0, y: 1.6, z: 0 });
+        b.mesh.position.x = 0;
+        b.mesh.position.y = 1.0;
+        b.mesh.position.z = 1.0;  // detrás del jugador (z>0+0.5)
+        b.velocity.set(0, 0, 0);
+        m.update(0.016, { x: 0, y: 1.6, z: 0 });
+        expect(m.balls.length).toBe(0);
     });
 });
 

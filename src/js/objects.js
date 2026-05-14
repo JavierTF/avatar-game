@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { BOUNDS } from './scene.js';
 
 const COLORS = {
-    red:   0xff2222,
-    blue:  0x2255ff,
-    green: 0x22cc55,
+    red:    0xff2222,
+    blue:   0x2255ff,
+    green:  0x22cc55,
+    orange: 0xff8800,
 };
 
 const WALL_MAX_Y          = 1.50;  // alto máximo donde se puede soltar la bola
@@ -34,13 +35,15 @@ export class BallManager {
     }
 
     // Pesos de spawn. Las rojas (movimiento caótico + homing) son las más
-    // abundantes a niveles altos para subir la dificultad.
+    // abundantes a niveles altos para subir la dificultad. Naranja sigue la
+    // misma curva que verde (movimiento recto, sin lógica de agarre).
     _spawnWeights() {
         const t = Math.min((this.difficulty.nivel - 1) / 10, 1);
-        const green = Math.round(4 - 2 * t);   // 4 → 2
-        const blue  = Math.round(4 - 2 * t);   // 4 → 2
-        const red   = Math.round(5 + 3 * t);   // 5 → 8
-        return { blue, green, red };
+        const green  = Math.round(4 - 2 * t);   // 4 → 2
+        const blue   = Math.round(4 - 2 * t);   // 4 → 2
+        const orange = Math.round(4 - 2 * t);   // 4 → 2 (igual que verde)
+        const red    = Math.round(5 + 3 * t);   // 5 → 8
+        return { blue, green, orange, red };
     }
 
     _pickType() {
