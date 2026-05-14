@@ -88,18 +88,17 @@ describe('PlayerFeedback — spawn', () => {
     it('cada spawn añade un efecto independiente', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
-        fb.spawn('red',   pos, '♥ 3');
-        fb.spawn('blue',  pos, 'x2');
-        fb.spawn('green', pos, '+♥');
+        fb.spawn('red',  pos, '♥ 3');
+        fb.spawn('blue', pos, 'x2');
+        fb.spawn('red',  pos, '♥ 2');
         expect(fb._effects.length).toBe(3);
     });
 
-    it('acepta tipos red, blue y green sin errores', () => {
+    it('acepta tipos red y blue sin errores', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
-        expect(() => fb.spawn('red',   pos, '♥ 3')).not.toThrow();
-        expect(() => fb.spawn('blue',  pos, 'x4' )).not.toThrow();
-        expect(() => fb.spawn('green', pos, '+♥' )).not.toThrow();
+        expect(() => fb.spawn('red',  pos, '♥ 3')).not.toThrow();
+        expect(() => fb.spawn('blue', pos, 'x4' )).not.toThrow();
     });
 });
 
@@ -125,7 +124,7 @@ describe('PlayerFeedback — update / ciclo de vida', () => {
     it('el efecto se elimina de la escena al expirar', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
-        fb.spawn('green', pos);
+        fb.spawn('red', pos);
         fb.update(2.0);
         expect(scene.added.length).toBe(0);
         expect(fb._effects.length).toBe(0);
@@ -154,7 +153,7 @@ describe('PlayerFeedback — gradiente del halo', () => {
     it('todos los tipos usan gradiente simple con ancla intermedia en 0.4', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
-        for (const type of ['red', 'blue', 'green']) {
+        for (const type of ['red', 'blue']) {
             fb.spawn(type, pos);
             expect(_gradStops).toHaveLength(3);
             expect(_gradStops[0].offset).toBe(0.0);
@@ -205,9 +204,9 @@ describe('PlayerFeedback — clearAll() (limpieza al endGame intra-frame)', () =
     it('clearAll() elimina todos los efectos pendientes de la escena', () => {
         const scene = makeScene();
         const fb    = new PlayerFeedback(scene);
-        fb.spawn('red',   pos, '♥ 1');
-        fb.spawn('blue',  pos, '♦ 2');
-        fb.spawn('green', pos, '♥ 3');
+        fb.spawn('red',  pos, '♥ 1');
+        fb.spawn('blue', pos, '♦ 2');
+        fb.spawn('red',  pos, '♥ 3');
         // Cada spawn con texto añade halo + texto = 2 sprites. 3 spawns = 6.
         expect(scene.added.length).toBe(6);
         expect(fb._effects.length).toBe(3);

@@ -124,15 +124,4 @@ export class GestureDetector {
         }
         return delta1.dot(dir) > speed || delta2.dot(dir) > speed;
     }
-
-    checkGreenActivate(delta1, delta2, held1, held2) {
-        const g = this.config.gestures['green_activate'];
-        if (!g) return { c1: false, c2: false };
-        const dir = new THREE.Vector3(...g.direction).normalize();
-        const spd = g.minSpeed;
-        return {
-            c1: held1 && delta1.dot(dir) > spd,
-            c2: held2 && delta2.dot(dir) > spd,
-        };
-    }
 }

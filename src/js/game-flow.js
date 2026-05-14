@@ -1,26 +1,6 @@
 // Lógica de flujo del juego que antes vivía inline en main.js. Se extrae
 // para poder testear las orquestaciones que main.js no permite (DOM-coupled).
 
-// Convierte una bola verde agarrada en muro vía balls.dropAsWall, y dispara
-// el feedback adecuado (sonido y métrica) según éxito o fracaso del drop.
-//
-// Antes el caso de fracaso quedaba sin feedback alguno: la bola desaparecía
-// silenciosamente y el jugador no sabía por qué su intento de muro no había
-// funcionado.
-//
-// `gameRunning` evita que un selectend tras game over (jugador soltando el
-// trigger después de morir/expirar tiempo) dispare sonidos o cambie estado.
-export function activateGreen(ball, ctrlPos, playerPos, balls, metrics, sound, gameRunning = true) {
-    if (!gameRunning) return false;
-    if (balls.dropAsWall(ball, ctrlPos, playerPos)) {
-        metrics.ballHit('green');
-        sound.life();
-        return true;
-    }
-    sound.negative();
-    return false;
-}
-
 // Orquesta el final de partida con guard idempotente.
 //
 // `alreadyEnded` evita el doble disparo si en el mismo frame: (a) el

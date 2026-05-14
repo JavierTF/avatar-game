@@ -83,7 +83,6 @@ function makeMetrics(overrides = {}) {
     return {
         reds:   { hit: 1, total: 5 },
         blues:  { hit: 3, total: 4 },
-        greens: { hit: 2, total: 3 },
         rachaMaxSinDaño: 6,
         powers: {
             escudo:  { used: 2, killed: 4 },
@@ -205,26 +204,23 @@ describe('FinalMetricsPanel — contenido renderizado', () => {
         expect(allText).toContain('FIN');
     });
 
-    it('renderiza etiquetas de las tres bolas (rojas, azules, verdes)', () => {
+    it('renderiza etiquetas de las dos bolas (rojas, azules)', () => {
         const scene = makeScene();
         const panel = new FinalMetricsPanel(scene);
         panel.show(makePlayer(), 3, makeMetrics(), { x: 0, y: 1.6, z: 0 });
         const allText = _fakeCtx._texts.map(t => t.text).join(' ').toLowerCase();
         expect(allText).toContain('roja');
         expect(allText).toContain('azul');
-        expect(allText).toContain('verde');
     });
 
-    it('renderiza el ratio "hit/total" para azules y verdes', () => {
+    it('renderiza el ratio "hit/total" para azules', () => {
         const scene = makeScene();
         const panel = new FinalMetricsPanel(scene);
         panel.show(makePlayer(), 3, makeMetrics({
             blues:  { hit: 3, total: 4 },
-            greens: { hit: 2, total: 3 },
         }), { x: 0, y: 1.6, z: 0 });
         const allText = _fakeCtx._texts.map(t => t.text).join(' ');
         expect(allText).toContain('3/4');
-        expect(allText).toContain('2/3');
     });
 
     it('renderiza la racha máxima sin daño', () => {

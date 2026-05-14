@@ -4,16 +4,8 @@ import { BOUNDS } from './scene.js';
 const COLORS = {
     red:    0xff2222,
     blue:   0x2255ff,
-    green:  0x22cc55,
     orange: 0xff8800,
 };
-
-const WALL_MAX_Y          = 1.50;  // alto máximo donde se puede soltar la bola
-const WALL_MIN_FRONT_DIST = 0.20;  // mínima distancia frontal al jugador
-
-// Radio de agarre de la verde — fuente única de verdad.
-// Lo importan collision.js (detección) y main.js (selectstart).
-export const GREEN_GRAB_R = 0.45;
 
 function randomGeo() {
     const r = THREE.MathUtils.lerp(0.1, 0.25, Math.random());
@@ -35,15 +27,13 @@ export class BallManager {
     }
 
     // Pesos de spawn. Las rojas (movimiento caótico + homing) son las más
-    // abundantes a niveles altos para subir la dificultad. Naranja sigue la
-    // misma curva que verde (movimiento recto, sin lógica de agarre).
+    // abundantes a niveles altos para subir la dificultad.
     _spawnWeights() {
         const t = Math.min((this.difficulty.nivel - 1) / 10, 1);
-        const green  = Math.round(4 - 2 * t);   // 4 → 2
         const blue   = Math.round(4 - 2 * t);   // 4 → 2
-        const orange = Math.round(4 - 2 * t);   // 4 → 2 (igual que verde)
+        const orange = Math.round(4 - 2 * t);   // 4 → 2
         const red    = Math.round(5 + 3 * t);   // 5 → 8
-        return { blue, green, orange, red };
+        return { blue, orange, red };
     }
 
     _pickType() {
@@ -63,24 +53,12 @@ export class BallManager {
             this.spawn(this._pickType(), playerPos);
         }
 
-        // Auto-drop: bolas verdes con timer expirado caen al suelo como muro.
-        for (const b of this.balls) {
-            if (b._autoDropAt && now >= b._autoDropAt) this._commitAutoDrop(b);
-        }
-
         for (let i = this.balls.length - 1; i >= 0; i--) {
             const b = this.balls[i];
-            // Las bolas con _wall (muro verde) son estáticas — no se mueven.
-            if (!b._wall) {
-                this._moveBall(b, delta, playerPos);
-            }
-            // Bolas que ya pasaron detrás del jugador se eliminan inmediatamente
-            // (excepto las agarradas y las del muro). Las agarradas tampoco
-            // caducan por out-of-bounds — siguen al mando aunque éste salga
-            // del área de juego, para no dejar grabbedBall1/2 colgando.
-            const behind = !b.grabbed && !b._wall &&
-                           b.mesh.position.z > playerPos.z + 0.5;
-            const oob    = !b.grabbed && this._outOfBounds(b.mesh.position);
+            this._moveBall(b, delta, playerPos);
+            // Bolas que ya pasaron detrás del jugador se eliminan inmediatamente.
+            const behind = b.mesh.position.z > playerPos.z + 0.5;
+            const oob    = this._outOfBounds(b.mesh.position);
             if (oob || behind) {
                 if (b.type === 'red' && !b._dropped && this.onRedEscaped) {
                     this.onRedEscaped();
@@ -88,107 +66,6 @@ export class BallManager {
                 this._remove(i);
             }
         }
-    }
-
-    // Intenta agarrar una verde en rango con el controlador `ctrl`. Si el
-    // mando ya tiene una bola (alreadyGrabbed=true), no agarra nada.
-    // En éxito: la bola se pega al mando (visible, sigue al mando vía drag).
-    tryGrabGreen(ctrl, idx, alreadyGrabbed) {
-        if (alreadyGrabbed) return null;
-        const cp = new THREE.Vector3();
-        ctrl.getWorldPosition(cp);
-        for (const ball of this.balls) {
-            if (ball.type !== 'green' || ball.grabbed || ball._wall) continue;
-            if (cp.distanceTo(ball.mesh.position) < GREEN_GRAB_R) {
-                ball.grabbed = true;
-                ball.ctrlPos = cp.clone();
-                ball.mesh.position.copy(cp);
-                return ball;
-            }
-        }
-        return null;
-    }
-
-    // Agenda el auto-drop al suelo: oculta la bola del mando inmediatamente y
-    // la hace aparecer 1s después en el suelo (x/z del ctrlPos actual, y=0.15).
-    // Idempotente: si ya estaba agendada, ignora. Lo dispara main.js cuando el
-    // mando baja a y < 1.5m durante el drag.
-    scheduleAutoDrop(ball, now = Date.now()) {
-        if (ball._autoDropAt) return;
-        ball.mesh.visible = false;
-        ball._autoDropAt  = now + 1000;
-        ball._autoDropPos = {
-            x: ball.ctrlPos.x,
-            y: 0.15,
-            z: ball.ctrlPos.z,
-        };
-    }
-
-    // Trackea la altura del mando para una bola agarrada y dispara el
-    // auto-drop sólo en la transición arriba→abajo (>1.5m → <1.5m). Si el
-    // mando nunca estuvo arriba, NO dispara aunque esté abajo (evita drop
-    // espurio al hacer grab a chest height típico).
-    trackHeightAndMaybeDrop(ball, currentY, now = Date.now()) {
-        if (!ball.grabbed || ball._autoDropAt) return;
-        if (currentY > 1.5) ball._wasAboveThreshold = true;
-        if (ball._wasAboveThreshold && currentY < 1.5) {
-            this.scheduleAutoDrop(ball, now);
-        }
-    }
-
-    // Si el jugador suelta el gatillo SIN haber triggerado el auto-drop
-    // (no llegó a bajar bajo 1.5m tras estar arriba), liberamos el grab
-    // para que la bola no se quede "stuck" en el aire. Vuelve a estado
-    // libre y continuará con su velocity (saldrá detrás del jugador y
-    // será eliminada normalmente).
-    releaseGrabbedIfNotScheduled(ball) {
-        if (!ball.grabbed || ball._autoDropAt) return;
-        ball.grabbed = false;
-        ball.ctrlPos = null;
-        ball._wasAboveThreshold = false;
-    }
-
-    // Aplica el auto-drop a una bola cuyo timer ya expiró: la coloca en el
-    // suelo, la marca como muro, la hace visible.
-    _commitAutoDrop(ball) {
-        ball.mesh.position.set(
-            ball._autoDropPos.x,
-            ball._autoDropPos.y,
-            ball._autoDropPos.z,
-        );
-        ball.mesh.visible = true;
-        ball._wall        = true;
-        ball.grabbed      = false;
-        ball.ctrlPos      = null;
-        ball._autoDropAt  = null;
-        ball._autoDropPos = null;
-    }
-
-    // Convierte una bola verde agarrada en un ladrillo del muro, si el
-    // mando está bajo (y ≤ 1.5m) y delante del jugador (frontDist ≥ 0.5m).
-    // En cualquier otro caso (alto, demasiado cerca, o detrás), descarta la
-    // bola eliminándola del manager.
-    // Devuelve true si la bola se quedó como muro, false si se descartó.
-    // Lanza si la bola no está agarrada o ya es muro — contrato explícito.
-    dropAsWall(ball, ctrlPos, playerPos) {
-        if (!ball.grabbed) throw new Error('dropAsWall: la bola no está agarrada');
-        if (ball._wall)    throw new Error('dropAsWall: la bola ya es muro');
-
-        const frontDist = playerPos.z - ctrlPos.z;
-        const tooHigh   = ctrlPos.y > WALL_MAX_Y;
-        const tooClose  = frontDist < WALL_MIN_FRONT_DIST;
-
-        if (tooHigh || tooClose) {
-            this.remove(ball);
-            return false;
-        }
-
-        ball._wall   = true;
-        ball.grabbed = false;
-        ball.ctrlPos = null;
-        ball.velocity.set(0, 0, 0);
-        ball.mesh.position.copy(ctrlPos);
-        return true;
     }
 
     spawn(type, playerPos) {
@@ -205,7 +82,7 @@ export class BallManager {
 
         const vel = this._velocity(type, cfg, spawnPos, playerPos);
 
-        const ball = { mesh, type, velocity: vel, cfg, alive: true, grabbed: false, ctrlPos: null };
+        const ball = { mesh, type, velocity: vel, cfg, alive: true };
         if (type === 'red') {
             ball._age        = 0;
             ball._chaosPhase = Math.random() * Math.PI * 2;
@@ -258,13 +135,6 @@ export class BallManager {
     }
 
     _moveBall(ball, delta, playerPos) {
-        // Una bola agarrada NO se mueve por su velocidad. Si tiene ctrlPos,
-        // sigue al mando; si por algún motivo ctrlPos es null, se queda quieta
-        // (no cae a la rama de velocity).
-        if (ball.grabbed) {
-            if (ball.ctrlPos) ball.mesh.position.copy(ball.ctrlPos);
-            return;
-        }
         // Movimiento LOCO para la roja: X e Y oscilan con dos ondas
         // superpuestas de distinta frecuencia; Z se mantiene o hace homing suave.
         if (ball.type === 'red') {
@@ -320,26 +190,6 @@ export class BallManager {
 
     removeAll() {
         for (let i = this.balls.length - 1; i >= 0; i--) this._remove(i);
-    }
-
-    // Hint visual: brillo verde cuando el mando está en rango de agarre.
-    // Bolas agarradas o convertidas en muro se fuerzan a emissive APAGADO
-    // (en vez de saltarlas, que las dejaba "congeladas" con el último glow).
-    updateGreenHints(p1, p2) {
-        for (const b of this.balls) {
-            if (b.type !== 'green') continue;
-            if (b.grabbed || b._wall) {
-                b.mesh.material.emissive.setHex(0x000000);
-                b.mesh.material.emissiveIntensity = 0.2;
-                continue;
-            }
-            const near = (
-                p1.distanceTo(b.mesh.position) < GREEN_GRAB_R ||
-                p2.distanceTo(b.mesh.position) < GREEN_GRAB_R
-            );
-            b.mesh.material.emissive.setHex(near ? 0x88ffaa : 0x000000);
-            b.mesh.material.emissiveIntensity = near ? 2.0 : 0.2;
-        }
     }
 
     getBallPositions() {

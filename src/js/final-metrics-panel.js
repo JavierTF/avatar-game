@@ -105,7 +105,6 @@ function _renderToCanvas(player, nivel, metrics) {
     const rojasEsquivadas = Math.max(0, metrics.reds.total - metrics.reds.hit);
     ctx.fillText(`Rojas (esquivadas): ${rojasEsquivadas}/${metrics.reds.total}`, col3, y); y += lineH;
     ctx.fillText(`Azules: ${metrics.blues.hit}/${metrics.blues.total}`, col3, y); y += lineH;
-    ctx.fillText(`Verdes: ${metrics.greens.hit}/${metrics.greens.total}`, col3, y); y += lineH;
     ctx.fillText(`Racha máx. sin daño: ${metrics.rachaMaxSinDaño}`, col3, y); y += lineH;
 
     y += lineH * 0.5;

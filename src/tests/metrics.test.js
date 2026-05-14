@@ -32,10 +32,8 @@ describe('Metrics — contadores básicos', () => {
     it('ballHit incrementa el hit por color', () => {
         const m = new Metrics();
         m.ballHit('blue');
-        m.ballHit('green');
-        m.ballHit('green');
-        expect(m.blues.hit).toBe(1);
-        expect(m.greens.hit).toBe(2);
+        m.ballHit('blue');
+        expect(m.blues.hit).toBe(2);
     });
 
     it('powerUsed acumula usos y eliminaciones', () => {

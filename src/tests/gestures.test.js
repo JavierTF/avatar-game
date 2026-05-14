@@ -23,9 +23,7 @@ function makeCtrl(x, y, z) {
 
 // Inicializa el detector y "registra" posiciones iniciales
 function makeDetector(pos1 = [0, 1.2, 0], pos2 = [0.4, 1.2, 0]) {
-    const config = { gestures: {
-        green_activate: { direction: [0, 1, -1], minSpeed: 0.03 }
-    }};
+    const config = { gestures: {} };
     const g = new GestureDetector(config);
     // Primera llamada — inicializa prev
     g.update(0.016, makeCtrl(...pos1), makeCtrl(...pos2));

@@ -1,4 +1,4 @@
-// Mock compartido de three.js para tests de objects.test.js y green.test.js.
+// Mock compartido de three.js para tests de objects.test.js.
 // Antes cada archivo tenía su propia implementación parcial — algunas con
 // métodos no-op (normalize, multiplyScalar, distanceTo) que ocultaban bugs.
 

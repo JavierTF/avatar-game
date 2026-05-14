@@ -4,7 +4,7 @@ import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFa
 import { createScene } from './scene.js';
 import { Player }      from './player.js';
 import { Difficulty }  from './difficulty.js';
-import { BallManager, GREEN_GRAB_R } from './objects.js';
+import { BallManager } from './objects.js';
 import { GestureDetector } from './gestures.js';
 import { Powers }      from './powers.js';
 import { CollisionSystem } from './collision.js';
@@ -15,7 +15,7 @@ import { ControllerTrail } from './trail.js';
 import { SoundFX } from './sound.js';
 import { CountdownHUD } from './countdown-hud.js';
 import { FinalMetricsPanel } from './final-metrics-panel.js';
-import { activateGreen as _runActivateGreen, endGame as _runEndGame } from './game-flow.js';
+import { endGame as _runEndGame } from './game-flow.js';
 
 let renderer, scene, camera;
 let c1, c2, cg1, cg2;
@@ -25,7 +25,6 @@ let config;
 let clock;
 let running = false;
 let held1 = false, held2 = false;
-let grabbedBall1 = null, grabbedBall2 = null;
 let isDesktop = false;
 let _mouseDown = false;
 let _yaw = 0, _pitch = 0;
@@ -48,7 +47,7 @@ async function loadConfig() {
         const r = await fetch('/config.json');
         return await r.json();
     } catch (_) {
-        return { gestures: {}, balls: { red: {}, blue: {}, green: {}, orange: {} }, profiles: [] };
+        return { gestures: {}, balls: { red: {}, blue: {}, orange: {} }, profiles: [] };
     }
 }
 
@@ -91,20 +90,10 @@ async function init() {
     c1.add(ray.clone());
     c2.add(ray.clone());
 
-    c1.addEventListener('selectstart', () => { held1 = true; _tryGrabGreen(c1, 1); });
-    c1.addEventListener('selectend',   () => {
-        held1 = false;
-        // Si la bola seguía agarrada sin haber triggereado el auto-drop,
-        // la liberamos para que no quede stuck en el aire.
-        if (grabbedBall1) balls.releaseGrabbedIfNotScheduled(grabbedBall1);
-        grabbedBall1 = null;
-    });
-    c2.addEventListener('selectstart', () => { held2 = true; _tryGrabGreen(c2, 2); });
-    c2.addEventListener('selectend',   () => {
-        held2 = false;
-        if (grabbedBall2) balls.releaseGrabbedIfNotScheduled(grabbedBall2);
-        grabbedBall2 = null;
-    });
+    c1.addEventListener('selectstart', () => { held1 = true; });
+    c1.addEventListener('selectend',   () => { held1 = false; });
+    c2.addEventListener('selectstart', () => { held2 = true; });
+    c2.addEventListener('selectend',   () => { held2 = false; });
 
     clock = new THREE.Clock();
 
@@ -160,14 +149,10 @@ function startGame() {
     if (balls) balls.removeAll();
 
     // Reset del estado XR — si el jugador llegó a game over con el trigger
-    // apretado, held1/held2 quedaban en true y grabbedBall1/2 referenciaban
-    // bolas eliminadas. Sin este reset el primer trigger del nuevo juego
-    // podía no agarrar (ctrlBusy=true por referencia colgante) y los poderes
+    // apretado, held1/held2 quedaban en true. Sin este reset los poderes
     // de dos manos podían dispararse antes de tiempo.
     held1 = false;
     held2 = false;
-    grabbedBall1 = null;
-    grabbedBall2 = null;
 
     const nivelInicial = parseInt(document.querySelector('input[name="nivel-inicio"]:checked')?.value ?? '1');
 
@@ -209,11 +194,6 @@ function startGame() {
         sound.magic();
     };
 
-    collision.onGreenGrabbed = (ball, ctrl) => {
-        if (ctrl === 1) grabbedBall1 = ball;
-        else            grabbedBall2 = ball;
-    };
-
     running = true;
 }
 
@@ -243,33 +223,6 @@ function handlePowers(gData) {
         const k = powers.activateViento(_camPos);
         if (k !== false) metrics.powerUsed('viento', k);
     }
-
-    const greenGesture = gestures.checkGreenActivate(delta1, delta2, held1, held2);
-    if (greenGesture.c1 || greenGesture.c2) {
-        player.heal();
-        metrics.ballHit('green');
-    }
-}
-
-// Agarre inmediato al pulsar el gatillo: si hay una verde en rango y el mando
-// no tiene ya una bola, la agarramos en el mismo evento, sin esperar al
-// próximo tick de collision.update. Cubre pulsaciones cortas y evita que un
-// segundo selectstart sin selectend en medio (XR quirk) deje huérfana la
-// primera bola.
-function _tryGrabGreen(ctrl, idx) {
-    if (!balls) return;
-    const already = idx === 1 ? !!grabbedBall1 : !!grabbedBall2;
-    const grabbed = balls.tryGrabGreen(ctrl, idx, already);
-    if (grabbed) {
-        if (idx === 1) grabbedBall1 = grabbed;
-        else            grabbedBall2 = grabbed;
-    }
-}
-
-function _activateGreen(ball, ctrl) {
-    const ctrlPos = new THREE.Vector3();
-    ctrl.getWorldPosition(ctrlPos);
-    _runActivateGreen(ball, ctrlPos, _camPos, balls, metrics, sound, running);
 }
 
 function endGame() {
@@ -299,26 +252,12 @@ function renderLoop() {
 
     _camPos.setFromMatrixPosition(camera.matrixWorld);
 
-    // Posiciones de mandos PRIMERO. Si una bola está agarrada, le asignamos
-    // la posición fresca del mando ANTES de que balls.update llame a _moveBall —
-    // así la bola sigue al mando sin un frame de retraso.
     const gData = gestures.update(delta, c1, c2);
-    if (grabbedBall1) {
-        grabbedBall1.ctrlPos = gData.pos1;
-        // Trigger del auto-drop sólo en la transición arriba→abajo: el mando
-        // tuvo que estar por encima de 1.5m al menos una vez antes de bajar.
-        // Evita disparo espurio cuando el grab ocurre a chest height típico.
-        balls.trackHeightAndMaybeDrop(grabbedBall1, gData.pos1.y);
-    }
-    if (grabbedBall2) {
-        grabbedBall2.ctrlPos = gData.pos2;
-        balls.trackHeightAndMaybeDrop(grabbedBall2, gData.pos2.y);
-    }
 
     balls.update(delta, _camPos);
     handlePowers(gData);
 
-    collision.update(c1, c2, camera, held1, held2, !!grabbedBall1, !!grabbedBall2);
+    collision.update(c1, c2, camera, held1, held2);
 
     // Si una colisión letal disparó endGame() intra-frame, salimos antes de
     // ejecutar el resto del frame (countdown, métricas, etc.) — el contador
@@ -329,8 +268,6 @@ function renderLoop() {
         renderer.render(scene, camera);
         return;
     }
-
-    balls.updateGreenHints(gData.pos1, gData.pos2);
 
     powers.update(delta);
     feedback.update(delta);

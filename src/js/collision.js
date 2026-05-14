@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { GREEN_GRAB_R } from './objects.js';
 
 const _wp  = new THREE.Vector3();
 const _head = new THREE.Vector3();
@@ -15,10 +14,9 @@ export class CollisionSystem {
         this.ballManager = ballManager;
         this.onBlueHit      = null;
         this.onRedHit       = null;
-        this.onGreenGrabbed = null;
     }
 
-    update(c1, c2, camera, held1, held2, ctrl1Busy = false, ctrl2Busy = false) {
+    update(c1, c2, camera, held1, held2) {
         _head.setFromMatrixPosition(camera.matrixWorld);
         c1.getWorldPosition(_wp);
         const p1 = _wp.clone();
@@ -50,24 +48,6 @@ export class CollisionSystem {
                     const pos = ball.mesh.position.clone();
                     this.ballManager.remove(ball);
                     if (this.onBlueHit) this.onBlueHit(pos);
-                }
-            } else if (ball.type === 'green') {
-                if (ball.grabbed || ball._wall) continue;
-                const gh1 = p1.distanceTo(bp) < GREEN_GRAB_R;
-                const gh2 = p2.distanceTo(bp) < GREEN_GRAB_R;
-                // Cada mando sólo puede agarrar UNA bola a la vez. Si el
-                // mando ya tiene una bola agarrada (ctrlXBusy), no se vuelve
-                // a agarrar otra — evita que la bola anterior quede huérfana.
-                if (gh1 && held1 && !ctrl1Busy) {
-                    ball.grabbed = true;
-                    ball.ctrlPos = p1.clone();
-                    ball.mesh.position.copy(p1);
-                    if (this.onGreenGrabbed) this.onGreenGrabbed(ball, 1);
-                } else if (gh2 && held2 && !ctrl2Busy) {
-                    ball.grabbed = true;
-                    ball.ctrlPos = p2.clone();
-                    ball.mesh.position.copy(p2);
-                    if (this.onGreenGrabbed) this.onGreenGrabbed(ball, 2);
                 }
             }
         }

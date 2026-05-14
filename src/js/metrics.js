@@ -21,7 +21,6 @@ export class Metrics {
     reset() {
         this.reds      = { hit: 0, total: 0 };
         this.blues     = { hit: 0, total: 0 };
-        this.greens    = { hit: 0, total: 0 };
         this.powers    = {
             escudo:  { used: 0, killed: 0 },
             sismico: { used: 0, killed: 0 },
@@ -83,7 +82,6 @@ export class Metrics {
 
         const pctR = this.reds.total   ? this.reds.hit   / this.reds.total   : 0;
         const pctB = this.blues.total  ? this.blues.hit  / this.blues.total  : 0;
-        const pctG = this.greens.total ? this.greens.hit / this.greens.total : 0;
 
         // Para rojas: mejor evaluación = menos golpes recibidos. Invertimos pctR.
         const pctRInv   = 1 - pctR;
@@ -139,11 +137,6 @@ export class Metrics {
               <td>Azules</td>
               <td>${this.blues.hit}</td><td>${this.blues.total}</td>
               <td>${Math.round(pctB * 100)}%</td><td>${evalLabel(pctB)}</td>
-            </tr>
-            <tr>
-              <td>Verdes</td>
-              <td>${this.greens.hit}</td><td>${this.greens.total}</td>
-              <td>${Math.round(pctG * 100)}%</td><td>${evalLabel(pctG)}</td>
             </tr>
             <tr><td colspan="5">Racha máxima de rojas esquivadas sin recibir daño: <strong>${this.rachaMaxSinDaño}</strong></td></tr>
           </table>
