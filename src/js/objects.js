@@ -4,7 +4,7 @@ import { BOUNDS } from './scene.js';
 const COLORS = {
     red:    0xff2222,
     blue:   0x2255ff,
-    orange: 0xff8800,
+    orange: 0x22cc55,
 };
 
 // Radio de agarre de la naranja — fuente única de verdad.
@@ -238,7 +238,7 @@ export class BallManager {
             const dx1 = Math.hypot(p1.x - b.mesh.position.x, p1.y - b.mesh.position.y, p1.z - b.mesh.position.z);
             const dx2 = Math.hypot(p2.x - b.mesh.position.x, p2.y - b.mesh.position.y, p2.z - b.mesh.position.z);
             const near = dx1 < ORANGE_GRAB_R || dx2 < ORANGE_GRAB_R;
-            b.mesh.material.emissive.setHex(near ? 0xffaa44 : 0x000000);
+            b.mesh.material.emissive.setHex(near ? 0x88ffaa : 0x000000);
             b.mesh.material.emissiveIntensity = near ? 2.0 : 0.2;
         }
     }
