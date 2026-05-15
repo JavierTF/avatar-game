@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 
 const COLORS = {
-    red:    0xff2222,
-    blue:   0x2255ff,
-    orange: 0x22cc55,
+    red:      0xff2222,
+    blue:     0x2255ff,
+    orange:   0x22cc55,
+    grabok:   0x22cc55,   // verde — agarre exitoso
+    grabfail: 0xff3344,   // rojo distintivo — agarre fallido cerca
 };
 
 function hexToRGB(hex) {

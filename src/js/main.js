@@ -242,17 +242,60 @@ function handlePowers(gData) {
     }
 }
 
+// Radio diagnóstico — sólo mostramos motivo de fallo si hay una naranja a
+// menos de este radio (el doble del agarre real 0.45m). Evita spam al pulsar
+// el gatillo lejos de cualquier bola.
+const GRAB_FAIL_NEAR_R = 0.9;
+// Radio real de agarre — debe coincidir con ORANGE_GRAB_R de objects.js.
+// Replicado aquí para clasificar el motivo de fallo sin importar la constante.
+const GRAB_R = 0.45;
+
 // Agarre inmediato al pulsar el gatillo: si hay una naranja en rango y el
 // mando no tiene ya una bola, la agarramos en el mismo evento, sin esperar al
 // próximo tick de collision.update. Cubre pulsaciones cortas.
+// Además spawnea un letrero diagnóstico:
+//   - "GRAB OK" verde si agarró.
+//   - Motivo concreto en rojo si NO agarró pero hay naranja a < 0.9m:
+//       · "MANDO OCUPADO"  → este mando ya tiene una bola agarrada.
+//       · "BOLA OCUPADA"   → la naranja más cercana la tiene el otro mando.
+//       · "FUERA DE RANGO" → la naranja está entre 0.45m y 0.9m del mando.
+//   - Silencio si no hay naranja en 0.9m.
 function _tryGrabOrange(ctrl, idx) {
-    if (!balls) return;
+    if (!balls || !feedback) return;
     const already = idx === 1 ? !!grabbedBall1 : !!grabbedBall2;
     const grabbed = balls.tryGrabOrange(ctrl, idx, already);
+
+    const ctrlPos = new THREE.Vector3();
+    ctrl.getWorldPosition(ctrlPos);
+
     if (grabbed) {
         if (idx === 1) grabbedBall1 = grabbed;
         else            grabbedBall2 = grabbed;
+        feedback.spawn('grabok', ctrlPos, 'GRAB OK', _metricBillboard());
+        return;
     }
+
+    // Busca la naranja más cercana dentro del radio diagnóstico (0.9m) — sirva
+    // para clasificar el motivo. Si ninguna entra, silencio.
+    let nearest = null;
+    let nearestDist = Infinity;
+    for (const b of balls.balls) {
+        if (b.type !== 'orange') continue;
+        const d = ctrlPos.distanceTo(b.mesh.position);
+        if (d < GRAB_FAIL_NEAR_R && d < nearestDist) {
+            nearest = b;
+            nearestDist = d;
+        }
+    }
+    if (!nearest) return;
+
+    let reason;
+    if (already)               reason = 'MANDO OCUPADO';
+    else if (nearest.grabbed)  reason = 'BOLA OCUPADA';
+    else if (nearestDist >= GRAB_R) reason = 'FUERA DE RANGO';
+    else                       reason = 'GRAB FAIL';   // fallback improbable
+
+    feedback.spawn('grabfail', ctrlPos, reason, _metricBillboard());
 }
 
 // Al soltar el gatillo: cura +1 vida (cap maxVida), spawnea feedback ♥ N,
